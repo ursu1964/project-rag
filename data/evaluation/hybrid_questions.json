@@ -1,0 +1,14 @@
+[
+  {
+    "question": "Explain how ApplicationA is connected to Database01.",
+    "expected_entities": ["ApplicationA", "VM1", "Database01"],
+    "expected_relationships": ["runsOn", "dependsOn"],
+    "expected_keywords": ["ApplicationA", "connected", "Database01"]
+  },
+  {
+    "question": "Which services use API01 and what dependencies are involved?",
+    "expected_entities": ["API01", "Database01"],
+    "expected_relationships": ["uses", "calls", "dependsOn"],
+    "expected_keywords": ["services", "API01", "dependencies"]
+  }
+]

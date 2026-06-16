@@ -1,0 +1,14 @@
+[
+  {
+    "question": "What does VM1 depend on?",
+    "expected_entities": ["VM1", "Database01"],
+    "expected_relationships": ["dependsOn"],
+    "expected_keywords": ["VM1", "depends", "Database01"]
+  },
+  {
+    "question": "What breaks if Database01 fails?",
+    "expected_entities": ["Database01"],
+    "expected_relationships": ["dependsOn", "uses"],
+    "expected_keywords": ["impact", "Database01", "fails"]
+  }
+]

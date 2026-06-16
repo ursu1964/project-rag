@@ -1,0 +1,14 @@
+[
+  {
+    "question": "Summarize the topology document.",
+    "expected_entities": [],
+    "expected_relationships": [],
+    "expected_keywords": ["topology", "summary", "document"]
+  },
+  {
+    "question": "What information is available about the application?",
+    "expected_entities": ["ApplicationA"],
+    "expected_relationships": [],
+    "expected_keywords": ["application", "information"]
+  }
+]

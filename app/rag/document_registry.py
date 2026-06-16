@@ -1,0 +1,30 @@
+from __future__ import annotations
+
+"""Document registration helpers."""
+
+import hashlib
+from pathlib import Path
+from typing import Any
+
+from app.repositories.documents_repository import create_document, document_exists_by_hash
+
+
+def calculate_file_hash(file_path: str | Path) -> str:
+    digest = hashlib.sha256()
+    with Path(file_path).open("rb") as file:
+        for block in iter(lambda: file.read(1024 * 1024), b""):
+            digest.update(block)
+    return digest.hexdigest()
+
+
+def document_exists(file_hash: str) -> bool:
+    return document_exists_by_hash(file_hash)
+
+
+def register_document(
+    filename: str,
+    source_path: str,
+    file_hash: str,
+    metadata: dict[str, Any] | None = None,
+) -> str:
+    return create_document(source_path, file_hash, {"filename": filename, **(metadata or {})})

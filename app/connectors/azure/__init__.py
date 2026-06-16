@@ -1,0 +1,1 @@
+"""Azure connector skeleton."""

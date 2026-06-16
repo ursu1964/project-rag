@@ -1,0 +1,29 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: projectrag-postgres
+    environment:
+      POSTGRES_DB: projectrag
+      POSTGRES_USER: projectrag
+      POSTGRES_PASSWORD: projectrag_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U projectrag -d projectrag"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  graphdb:
+    image: ontotext/graphdb:latest
+    container_name: projectrag-graphdb
+    ports:
+      - "7200:7200"
+    volumes:
+      - graphdb_data:/opt/graphdb/home
+
+volumes:
+  postgres_data:
+  graphdb_data:
