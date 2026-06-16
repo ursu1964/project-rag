@@ -1,1 +1,1 @@
-# project-rag
+# ProjectRAG MVP
