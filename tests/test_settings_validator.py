@@ -15,6 +15,7 @@ def _settings(**overrides):
         "chunk_size": 1000,
         "chunk_overlap": 150,
         "max_upload_size_bytes": 1024,
+        "max_upload_files_per_request": 1,
         "ingest_max_files_per_run": 100,
         "auth_mode": "local",
         "auth_required": False,

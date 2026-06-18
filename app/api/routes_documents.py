@@ -69,20 +69,37 @@ def _save_upload(file: UploadFile, ingest: bool = False) -> dict[str, object]:
     return response
 
 
+def _save_uploads(files: list[UploadFile], ingest: bool = False) -> list[dict[str, object]]:
+    if len(files) == 0:
+        raise HTTPException(status_code=400, detail="Missing upload file")
+
+    max_files = int(settings.max_upload_files_per_request)
+    if len(files) > max_files:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Too many upload files; maximum allowed is {max_files}",
+        )
+
+    return [_save_upload(file, ingest=ingest) for file in files]
+
+
 @router.post("/documents/upload")
 async def upload_document(request: Request, ingest: bool = Query(default=False)) -> dict[str, object]:
     REQUEST_COUNTER.labels("/documents/upload").inc()
     form = await request.form()
-    file = form.get("file")
-    if not isinstance(file, UploadFile):
-        raise HTTPException(status_code=400, detail="Missing upload file")
-    result = _save_upload(file, ingest=ingest)
+    files = [item for item in form.getlist("file") if isinstance(item, UploadFile)]
+    results = _save_uploads(files, ingest=ingest)
+    result: dict[str, object] = results[0] if len(results) == 1 else {"files": results}
     record_security_event(
         action="upload",
         resource="/documents/upload",
         decision="allow",
         risk_level="low",
-        metadata={"filename": result.get("filename"), "ingested": ingest},
+        metadata={
+            "filename": result.get("filename") if len(results) == 1 else None,
+            "file_count": len(results),
+            "ingested": ingest,
+        },
     )
     return result
 

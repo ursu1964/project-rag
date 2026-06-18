@@ -16,14 +16,17 @@ from app.api.routes_feedback import router as feedback_router
 from app.api.routes_graph import router as graph_router
 from app.api.routes_health import router as health_router
 from app.api.routes_memory import router as memory_router
+from app.api.routes_operations import router as operations_router
 from app.api.routes_query import router as query_router
 from app.api.routes_retrieval import router as retrieval_router
 from app.api.routes_sources import router as sources_router
 from app.api.routes_workflow_audit import router as workflow_audit_router
+from app.core.config import settings
 from app.core.logging import get_logger
 from app.core.settings_validator import validate_settings
 from app.core.telemetry import setup_telemetry
 from app.gateway.middleware import install_gateway_middleware
+from app.graph.graphdb_client import ensure_repository_ready
 
 logger = get_logger(__name__)
 _VERSION_PREFIX = "/api/v1"
@@ -49,6 +52,12 @@ def _expand_included_routes(routes: list[object]) -> list[BaseRoute]:
 def create_app() -> FastAPI:
     validate_settings()
     logger.info("Creating ProjectRAG FastAPI application")
+    if settings.graphdb_ensure_repository_on_startup:
+        try:
+            ensure_repository_ready()
+        except Exception as exc:
+            # Do not block startup; GraphDB calls remain lazily resilient.
+            logger.warning("GraphDB repository readiness check failed at startup: %s", exc)
     app = FastAPI(title="ProjectRAG")
     install_gateway_middleware(app)
     setup_telemetry(app)
@@ -66,6 +75,7 @@ def create_app() -> FastAPI:
         feedback_router,
         graph_router,
         memory_router,
+        operations_router,
         cognitive_router,
         workflow_audit_router,
     )

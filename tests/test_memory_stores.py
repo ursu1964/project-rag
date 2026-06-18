@@ -37,6 +37,15 @@ def test_complete_workflow_run_updates_status(monkeypatch):
     assert execute.call_args.args[1] == ("completed", "wf-1")
 
 
+def test_save_workflow_checkpoint_calls_repository(monkeypatch):
+    execute = MagicMock()
+    monkeypatch.setattr(workflow_store, "execute", execute)
+
+    workflow_store.save_workflow_checkpoint("wf-1", "workflow_start", {"question": "q"})
+
+    assert "workflow_checkpoints" in execute.call_args.args[0]
+
+
 def test_log_agent_run_inserts_summary(monkeypatch):
     execute = MagicMock()
     monkeypatch.setattr(agent_store, "execute", execute)

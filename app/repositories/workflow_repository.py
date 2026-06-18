@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 from typing import Any
 
+from app.core.metrics import observe_agent_run, observe_workflow_transition
 from app.memory.postgres import execute, fetch_all, get_connection
 from app.security.tenant_context import current_tenant_id
 
@@ -27,6 +28,7 @@ def create_workflow_run(question: str, route: str = "", tenant_id: str | None = 
             )
             row = cursor.fetchone()
         connection.commit()
+    observe_workflow_transition("running")
     return str(row["id"])
 
 
@@ -39,6 +41,58 @@ def complete_workflow_run(workflow_id: str, status: str = "completed") -> None:
         """,
         (status, workflow_id),
     )
+    observe_workflow_transition(status)
+
+
+def save_workflow_checkpoint(
+    workflow_id: str,
+    step_name: str,
+    state: dict[str, Any],
+    status: str = "running",
+    error: str | None = None,
+) -> None:
+    """Persist or update a workflow checkpoint for durable resume/audit."""
+    execute(
+        """
+        INSERT INTO workflow_checkpoints (workflow_id, step_name, state, status, error)
+        VALUES (%s, %s, %s::jsonb, %s, %s)
+        ON CONFLICT (workflow_id, step_name)
+        DO UPDATE SET
+            state = EXCLUDED.state,
+            status = EXCLUDED.status,
+            error = EXCLUDED.error,
+            updated_at = now()
+        """,
+        (workflow_id, step_name, json.dumps(state), status, error),
+    )
+
+
+def list_workflow_checkpoints(workflow_id: str) -> list[dict[str, Any]]:
+    """List checkpoints for a workflow ordered by latest update."""
+    return fetch_all(
+        """
+        SELECT id, workflow_id, step_name, state, status, error, created_at, updated_at
+        FROM workflow_checkpoints
+        WHERE workflow_id = %s
+        ORDER BY updated_at DESC, created_at DESC
+        """,
+        (workflow_id,),
+    )
+
+
+def latest_workflow_checkpoint(workflow_id: str) -> dict[str, Any] | None:
+    """Return latest checkpoint for a workflow if present."""
+    rows = fetch_all(
+        """
+        SELECT id, workflow_id, step_name, state, status, error, created_at, updated_at
+        FROM workflow_checkpoints
+        WHERE workflow_id = %s
+        ORDER BY updated_at DESC, created_at DESC
+        LIMIT 1
+        """,
+        (workflow_id,),
+    )
+    return rows[0] if rows else None
 
 
 def store_workflow_output(workflow_id: str, output: dict[str, Any]) -> None:
@@ -118,6 +172,7 @@ def log_agent_run(
             json.dumps({"summary": output_summary}),
         ),
     )
+    observe_agent_run(agent_name=agent_name, status=status, latency_ms=latency_ms)
 
 
 def store_validation_result(

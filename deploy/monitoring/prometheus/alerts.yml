@@ -1,0 +1,50 @@
+groups:
+  - name: projectrag_alerts
+    rules:
+      - alert: ProjectRAGApiDown
+        expr: max(up{job="projectrag_api"}) < 1
+        for: 2m
+        labels:
+          severity: critical
+          service: api
+        annotations:
+          summary: "ProjectRAG API is down"
+          description: "Prometheus cannot scrape the ProjectRAG API metrics endpoint for 2 minutes."
+
+      - alert: ProjectRAGHighErrorRate
+        expr: |
+          100 * sum(rate(projectrag_http_requests_total{status=~"5.."}[10m]))
+            / clamp_min(sum(rate(projectrag_http_requests_total[10m])), 0.0001) > 2
+        for: 10m
+        labels:
+          severity: warning
+          service: api
+        annotations:
+          summary: "ProjectRAG high 5xx error rate"
+          description: "5xx error rate is above 2% over the last 10 minutes."
+
+      - alert: ProjectRAGHighQueryLatencyP95
+        expr: |
+          histogram_quantile(
+            0.95,
+            sum by (le) (rate(projectrag_http_request_duration_ms_bucket{path=~".*/query"}[10m]))
+          ) > 5000
+        for: 10m
+        labels:
+          severity: warning
+          service: api
+        annotations:
+          summary: "ProjectRAG query latency p95 high"
+          description: "p95 query latency is above 5000ms over the last 10 minutes."
+
+      - alert: ProjectRAGIngestionFailureSpike
+        expr: |
+          100 * rate(projectrag_ingestion_failures_total[15m])
+            / clamp_min(rate(projectrag_ingestions_total[15m]), 0.0001) > 10
+        for: 15m
+        labels:
+          severity: warning
+          service: ingestion
+        annotations:
+          summary: "ProjectRAG ingestion failure spike"
+          description: "Ingestion failure rate is above 10% over the last 15 minutes."

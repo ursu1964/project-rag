@@ -250,10 +250,10 @@ Run:
 ```bash
 pytest -q
 docker compose ps
-curl http://127.0.0.1:8000/health/deep
+curl http://127.0.0.1:8001/health/deep
 python -m scripts.generate_metrics_report
-curl http://127.0.0.1:8000/graph/export?limit=20
-curl -X POST http://127.0.0.1:8000/query \
+curl http://127.0.0.1:8001/graph/export?limit=20
+curl -X POST http://127.0.0.1:8001/query \
   -H "Content-Type: application/json" \
   -d '{"question":"What does VM1 depend on?"}'
 ```

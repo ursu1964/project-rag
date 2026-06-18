@@ -13,7 +13,7 @@ This guide runs ProjectRAG locally with Docker Compose for PostgreSQL/pgvector, 
 cp .env.example .env
 ```
 
-Adjust ports in `.env` if your machine already uses `5432`, `7200`, or `8000`.
+Adjust ports in `.env` if your machine already uses `5432`, `7200`, or `8001`.
 
 ## Build the FastAPI Image
 
@@ -95,13 +95,13 @@ curl http://localhost:11434/api/tags
 Basic app health:
 
 ```bash
-curl http://127.0.0.1:8000/health
+curl http://127.0.0.1:8001/health
 ```
 
 Dependency health:
 
 ```bash
-curl http://127.0.0.1:8000/health/deep
+curl http://127.0.0.1:8001/health/deep
 ```
 
 Expected result is `status: ok`. If one dependency is down, `/health/deep` returns `degraded` with an error message.
@@ -117,7 +117,7 @@ make ingest
 Ask a question:
 
 ```bash
-curl -X POST http://127.0.0.1:8000/query \
+curl -X POST http://127.0.0.1:8001/query \
   -H "Content-Type: application/json" \
   -d '{"question":"What does VM1 depend on?"}'
 ```
@@ -129,7 +129,7 @@ curl -X POST http://127.0.0.1:8000/query \
 Find the process:
 
 ```bash
-sudo lsof -i :8000
+sudo lsof -i :8001
 sudo lsof -i :5432
 sudo lsof -i :7200
 ```

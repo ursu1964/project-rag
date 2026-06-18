@@ -42,6 +42,13 @@ def test_query_runs_workflow(monkeypatch):
     monkeypatch.setattr("app.api.routes_query.create_workflow_run", lambda question: "wf-1")
     monkeypatch.setattr("app.api.routes_query.complete_workflow_run", lambda workflow_id, status="completed": None)
     monkeypatch.setattr("app.api.routes_query.store_validation_result", lambda workflow_id, validation: None)
+    checkpoints = []
+    monkeypatch.setattr(
+        "app.api.routes_query.save_workflow_checkpoint",
+        lambda workflow_id, step_name, state, status="running", error=None: checkpoints.append(
+            (workflow_id, step_name, status, error)
+        ),
+    )
     stored_outputs = []
     monkeypatch.setattr("app.api.routes_query.store_workflow_output", lambda workflow_id, output: stored_outputs.append((workflow_id, output)))
     monkeypatch.setattr("app.api.routes_query.build_workflow", lambda: Workflow())
@@ -58,6 +65,8 @@ def test_query_runs_workflow(monkeypatch):
     assert stored_outputs[0][0] == "wf-1"
     assert stored_outputs[0][1]["answer"] == "ok"
     assert stored_outputs[0][1]["provenance"]["generated_answer"] == "ok"
+    assert checkpoints[0][1] == "workflow_start"
+    assert checkpoints[-1][1] == "workflow_complete"
 
 
 
@@ -223,13 +232,70 @@ def test_workflow_audit_routes(monkeypatch):
         "get_workflow_run",
         lambda workflow_id: {"id": workflow_id, "agent_runs": [], "validation_results": []},
     )
+    monkeypatch.setattr(audit_routes, "list_workflow_checkpoints", lambda workflow_id: [{"step_name": "workflow_start"}])
     monkeypatch.setattr(audit_routes, "list_agent_runs", lambda workflow_id=None, limit=100: [])
     monkeypatch.setattr(audit_routes, "list_validation_results", lambda workflow_id=None, limit=100: [])
 
     assert audit_routes.workflows() == [{"id": "wf-1"}]
-    assert audit_routes.workflow_detail("wf-1")["id"] == "wf-1"
+    detail = audit_routes.workflow_detail("wf-1")
+    assert detail["id"] == "wf-1"
+    assert detail["checkpoints"] == [{"step_name": "workflow_start"}]
     assert audit_routes.agent_runs() == []
     assert audit_routes.validation_results() == []
+
+
+def test_workflow_resume_endpoint(monkeypatch):
+    from app.api import routes_workflow_audit as audit_routes
+
+    monkeypatch.setattr(audit_routes, "get_workflow_run", lambda workflow_id: {"id": workflow_id, "input": {"question": "q"}})
+    monkeypatch.setattr(
+        audit_routes,
+        "latest_workflow_checkpoint",
+        lambda workflow_id: {"step_name": "workflow_invoke", "state": {"route": "graph"}},
+    )
+
+    payload = audit_routes.workflow_resume_or_replay("wf-1", replay=False)
+
+    assert payload["mode"] == "resume"
+    assert payload["workflow_id"] == "wf-1"
+    assert payload["latest_checkpoint"]["step_name"] == "workflow_invoke"
+
+
+def test_workflow_replay_endpoint(monkeypatch):
+    from app.api import routes_workflow_audit as audit_routes
+
+    monkeypatch.setattr(audit_routes, "get_workflow_run", lambda workflow_id: {"id": workflow_id, "input": {"question": "What changed?"}})
+    monkeypatch.setattr(
+        audit_routes,
+        "latest_workflow_checkpoint",
+        lambda workflow_id: {"step_name": "workflow_error", "state": {}},
+    )
+    monkeypatch.setattr(audit_routes, "run_query", lambda request, debug=False: {"answer": "ok", "debug": debug})
+
+    payload = audit_routes.workflow_resume_or_replay("wf-1", replay=True, debug=True)
+
+    assert payload["mode"] == "replay"
+    assert payload["source_workflow_id"] == "wf-1"
+    assert payload["result"]["answer"] == "ok"
+
+
+def test_operations_retry_queue_route(monkeypatch):
+    from app.api import routes_operations
+
+    monkeypatch.setattr(
+        routes_operations,
+        "list_retry_eta",
+        lambda limit=100: [
+            {"id": "job-1", "due_now": True, "retry_eta_seconds": 0},
+            {"id": "job-2", "due_now": False, "retry_eta_seconds": 15},
+        ],
+    )
+
+    result = routes_operations.retry_queue(limit=50)
+
+    assert result["status"] == "ok"
+    assert result["total"] == 2
+    assert result["due_now"] == 1
 
 
 def test_create_app_registers_workflow_audit_routes():
@@ -237,8 +303,10 @@ def test_create_app_registers_workflow_audit_routes():
     assert {
         "/workflows",
         "/workflows/{workflow_id}",
+        "/workflows/{workflow_id}/resume",
         "/agents/runs",
         "/validation/results",
+        "/operations/jobs/retry-queue",
     }.issubset(paths)
 
 

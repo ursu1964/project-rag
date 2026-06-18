@@ -18,7 +18,7 @@ services:
       OTEL_ENABLED: ${OTEL_ENABLED:-false}
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318/v1/traces
     ports:
-      - "8000:8000"
+      - "${APP_PORT:-8001}:8000"
     depends_on:
       postgres:
         condition: service_healthy
@@ -37,7 +37,7 @@ services:
       dockerfile: Dockerfile
     container_name: projectrag-frontend
     environment:
-      NEXT_PUBLIC_API_BASE_URL: http://localhost:8000
+      NEXT_PUBLIC_API_BASE_URL: http://localhost:8001
     ports:
       - "3000:3000"
     depends_on:
@@ -96,8 +96,68 @@ services:
       - "4318:4318"
       - "8889:8889"
 
+  blackbox:
+    image: prom/blackbox-exporter:v0.25.0
+    container_name: projectrag-blackbox
+    command: ["--config.file=/etc/blackbox/blackbox.yml"]
+    volumes:
+      - ./deploy/monitoring/blackbox/blackbox.yml:/etc/blackbox/blackbox.yml:ro
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    ports:
+      - "9115:9115"
+
+  prometheus:
+    image: prom/prometheus:v2.54.1
+    container_name: projectrag-prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--web.enable-lifecycle"
+    volumes:
+      - ./deploy/monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./deploy/monitoring/prometheus/alerts.yml:/etc/prometheus/alerts.yml:ro
+      - prometheus_data:/prometheus
+    ports:
+      - "${PROMETHEUS_PORT:-9091}:9090"
+    depends_on:
+      - api
+      - blackbox
+      - alertmanager
+
+  alertmanager:
+    image: prom/alertmanager:v0.27.0
+    container_name: projectrag-alertmanager
+    command:
+      - "--config.file=/etc/alertmanager/alertmanager.yml"
+      - "--storage.path=/alertmanager"
+    volumes:
+      - ${ALERTMANAGER_CONFIG_PATH:-./deploy/monitoring/alertmanager/alertmanager.yml}:/etc/alertmanager/alertmanager.yml:ro
+      - alertmanager_data:/alertmanager
+    ports:
+      - "${ALERTMANAGER_PORT:-9094}:9093"
+
+  grafana:
+    image: grafana/grafana:11.1.4
+    container_name: projectrag-grafana
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+      GF_USERS_DEFAULT_THEME: light
+    volumes:
+      - ./deploy/monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./deploy/monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana_data:/var/lib/grafana
+    ports:
+      - "3001:3000"
+    depends_on:
+      - prometheus
+
 volumes:
   postgres_data:
   redis_data:
   qdrant_data:
   graphdb_data:
+  prometheus_data:
+  grafana_data:
+  alertmanager_data:

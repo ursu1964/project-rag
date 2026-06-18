@@ -5,8 +5,11 @@ from __future__ import annotations
 import json
 from typing import Any
 
+from app.core.logging import get_logger
 from app.memory.postgres import execute, fetch_all
 from app.security.identity import Identity, get_local_identity
+
+logger = get_logger(__name__)
 
 
 def record_security_event(
@@ -29,34 +32,47 @@ def record_security_event(
         "risk_level": risk_level,
         "metadata": merged_metadata,
     }
-    execute(
-        """
-        INSERT INTO security_audit_events (
-            "user", role, action, resource, decision, risk_level, metadata
+    try:
+        execute(
+            """
+            INSERT INTO security_audit_events (
+                "user", role, action, resource, decision, risk_level, metadata
+            )
+            VALUES (%s, %s, %s, %s, %s, %s, %s::jsonb)
+            """,
+            (
+                event["user"],
+                event["role"],
+                event["action"],
+                event["resource"],
+                event["decision"],
+                event["risk_level"],
+                json.dumps(event["metadata"]),
+            ),
         )
-        VALUES (%s, %s, %s, %s, %s, %s, %s::jsonb)
-        """,
-        (
-            event["user"],
-            event["role"],
-            event["action"],
-            event["resource"],
-            event["decision"],
-            event["risk_level"],
-            json.dumps(event["metadata"]),
-        ),
-    )
+    except Exception as exc:  # pragma: no cover - depends on external DB state
+        # Security audit should never block core API flows in local/dev/test mode.
+        logger.warning(
+            "security_audit_write_failed action=%s resource=%s reason=%s",
+            action,
+            resource,
+            exc.__class__.__name__,
+        )
     return event
 
 
 def list_security_events(limit: int = 100) -> list[dict[str, Any]]:
     """List recent security audit events."""
-    return fetch_all(
-        """
-        SELECT id, "user", role, action, resource, decision, risk_level, metadata, timestamp
-        FROM security_audit_events
-        ORDER BY timestamp DESC
-        LIMIT %s
-        """,
-        (int(limit),),
-    )
+    try:
+        return fetch_all(
+            """
+            SELECT id, "user", role, action, resource, decision, risk_level, metadata, timestamp
+            FROM security_audit_events
+            ORDER BY timestamp DESC
+            LIMIT %s
+            """,
+            (int(limit),),
+        )
+    except Exception as exc:  # pragma: no cover - depends on external DB state
+        logger.warning("security_audit_read_failed reason=%s", exc.__class__.__name__)
+        return []

@@ -13,6 +13,7 @@ from app.memory.validation_store import store_validation_result
 from app.memory.workflow_store import (
     complete_workflow_run,
     create_workflow_run,
+    save_workflow_checkpoint,
     store_workflow_output,
 )
 from app.rag.citations import build_citations
@@ -24,6 +25,21 @@ from app.workflows.rag_workflow import build_workflow
 router = APIRouter()
 
 _PROMPT_VERSION = "rag-infra-v1"
+
+
+def _try_save_checkpoint(
+    workflow_id: str,
+    step_name: str,
+    state: dict,
+    status: str = "running",
+    error: str | None = None,
+) -> None:
+    """Best-effort checkpoint persistence to keep request path resilient."""
+    try:
+        save_workflow_checkpoint(workflow_id, step_name, state, status=status, error=error)
+    except Exception:
+        # Checkpoint persistence should not break query execution.
+        pass
 
 
 def _query_evidence(state: dict) -> dict:
@@ -117,7 +133,23 @@ def query(request: QueryRequest, debug: bool = False) -> dict:
     workflow_id = create_workflow_run(audit_question)
     workflow = build_workflow()
     try:
+        _try_save_checkpoint(
+            workflow_id,
+            "workflow_start",
+            {"question": audit_question, "debug": debug},
+            status="running",
+        )
         state = workflow.invoke({"question": request.question, "workflow_id": workflow_id})
+        _try_save_checkpoint(
+            workflow_id,
+            "workflow_invoke",
+            {
+                "route": state.get("route"),
+                "has_answer": bool(state.get("answer")),
+                "validation": state.get("validation") or {},
+            },
+            status="running",
+        )
         state["policy_decision"] = policy_decision
         metrics = {**(state.get("metrics") or {}), "duration_ms": elapsed_ms(started)}
         state["workflow_id"] = workflow_id
@@ -145,10 +177,27 @@ def query(request: QueryRequest, debug: bool = False) -> dict:
         if validation:
             store_validation_result(workflow_id, validation)
         store_workflow_output(workflow_id, response_payload)
+        _try_save_checkpoint(
+            workflow_id,
+            "workflow_complete",
+            {
+                "status": "completed",
+                "confidence": validation.get("confidence"),
+                "grounded": validation.get("grounded"),
+            },
+            status="completed",
+        )
         complete_workflow_run(workflow_id)
         if debug:
             return state
         return response_payload
-    except Exception:
+    except Exception as exc:
+        _try_save_checkpoint(
+            workflow_id,
+            "workflow_error",
+            {"status": "failed"},
+            status="failed",
+            error=str(exc),
+        )
         complete_workflow_run(workflow_id, status="failed")
         raise

@@ -1,0 +1,62 @@
+# Copy this file to alertmanager.local.yml and replace placeholders with real values.
+# This file is safe to keep tracked only as an example. The local file is gitignored.
+
+global:
+  resolve_timeout: 5m
+
+route:
+  group_by: ["alertname", "service", "severity"]
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 2h
+  receiver: slack_teams
+  routes:
+    - matchers:
+        - severity="critical"
+      receiver: all_channels
+    - matchers:
+        - service="ingestion"
+      receiver: email_ops
+      continue: true
+    - matchers:
+        - severity="warning"
+      receiver: slack_teams
+
+receivers:
+  - name: slack_teams
+    slack_configs:
+      - api_url: "https://hooks.slack.com/services/REPLACE/REPLACE/REPLACE"
+        channel: "#projectrag-alerts"
+        username: "projectrag-alertmanager"
+        send_resolved: true
+    webhook_configs:
+      - url: "https://example.invalid/teams/webhook"
+        send_resolved: true
+
+  - name: email_ops
+    email_configs:
+      - to: "ops@example.com"
+        from: "projectrag-alerts@example.com"
+        smarthost: "smtp.example.com:587"
+        auth_username: "projectrag-alerts@example.com"
+        auth_password: "change-me"
+        require_tls: false
+        send_resolved: true
+
+  - name: all_channels
+    slack_configs:
+      - api_url: "https://hooks.slack.com/services/REPLACE/REPLACE/REPLACE"
+        channel: "#projectrag-alerts"
+        username: "projectrag-alertmanager"
+        send_resolved: true
+    webhook_configs:
+      - url: "https://example.invalid/teams/webhook"
+        send_resolved: true
+    email_configs:
+      - to: "ops@example.com"
+        from: "projectrag-alerts@example.com"
+        smarthost: "smtp.example.com:587"
+        auth_username: "projectrag-alerts@example.com"
+        auth_password: "change-me"
+        require_tls: false
+        send_resolved: true

@@ -101,6 +101,7 @@ class TestBackgroundJobOrchestration:
         assert job_after_fail["status"] == JobStatus.RETRYING.value
         assert job_after_fail["attempts"] == 1
         assert job_after_fail["error"] == "Connection timeout"
+        assert job_after_fail["next_retry_at"] is not None
 
         # Should be retryable
         next_job = next_retryable_job()
@@ -113,6 +114,7 @@ class TestBackgroundJobOrchestration:
         job_after_2nd = get_job(job_id)
         assert job_after_2nd["attempts"] == 2
         assert job_after_2nd["status"] == JobStatus.RETRYING.value
+        assert job_after_2nd["next_retry_at"] is not None
 
         # Third attempt - final failure
         mark_running(job_id)
@@ -120,6 +122,7 @@ class TestBackgroundJobOrchestration:
         job_final = get_job(job_id)
         assert job_final["attempts"] == 3
         assert job_final["status"] == JobStatus.FAILED.value
+        assert job_final["next_retry_at"] is None
 
     def test_list_jobs_with_filters(self):
         """Test filtering jobs by type, status, and resource."""

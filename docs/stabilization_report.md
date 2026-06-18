@@ -335,7 +335,7 @@ None found after fixes.
 
 ## Non-Blocking Notes
 
-1. The local Docker PostgreSQL port is configured as `5433` to avoid host conflicts. Developers must keep `.env` aligned with Docker Compose.
+1. The local Docker PostgreSQL port is configured as `5433` to avoid host conflicts. Keep `.env` aligned with Docker Compose when using the local port mapping.
 2. GraphDB repository initialization is now available, but operators may still need to run:
 
    ```bash
@@ -343,13 +343,13 @@ None found after fixes.
    ```
 
    before first graph ingestion if the repository is absent.
-3. Uvicorn should be started with the project virtual environment to avoid missing dependencies:
+3. Start Uvicorn from the project virtual environment to avoid missing dependencies:
 
    ```bash
-   /home/RAG/.venv/bin/python -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
+   /home/RAG/.venv/bin/python -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8001
    ```
 
-4. The ambient Python environment used during one test run emitted external pandas optional dependency warnings. The project virtual environment test run passed cleanly without those warnings.
+4. One ambient Python run emitted pandas optional-dependency warnings. The project virtual environment test run passed cleanly without those warnings.
 
 ## Recommended Stable Local Startup
 
@@ -362,17 +362,17 @@ docker exec -i projectrag-postgres psql -U projectrag -d projectrag < scripts/in
 
 /home/RAG/.venv/bin/python -m scripts.init_graphdb_repository
 
-/home/RAG/.venv/bin/python -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
+/home/RAG/.venv/bin/python -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8001
 ```
 
 Then verify:
 
 ```bash
-curl http://127.0.0.1:8000/health
-curl http://127.0.0.1:8000/health/deep
+curl http://127.0.0.1:8001/health
+curl http://127.0.0.1:8001/health/deep
 ```
 
-Expected deep health when all dependencies are running:
+Expected deep-health response when all dependencies are running:
 
 ```json
 {"status":"ok","postgres":"ok","graphdb":"ok","ollama":"ok"}

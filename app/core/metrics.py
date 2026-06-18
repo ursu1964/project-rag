@@ -42,6 +42,16 @@ def _histogram(name: str, description: str, labelnames: tuple[str, ...] = ()):  
 
 
 REQUEST_COUNTER = _counter("projectrag_requests_total", "Total HTTP requests", ("endpoint",))
+HTTP_REQUEST_COUNTER = _counter(
+    "projectrag_http_requests_total",
+    "Total HTTP requests by method, path, and status",
+    ("method", "path", "status"),
+)
+HTTP_REQUEST_DURATION = _histogram(
+    "projectrag_http_request_duration_ms",
+    "HTTP request duration in milliseconds",
+    ("method", "path", "status"),
+)
 QUERY_COUNTER = _counter("projectrag_queries_total", "Total RAG queries")
 INGESTION_COUNTER = _counter("projectrag_ingestions_total", "Total ingestion runs")
 INGESTION_FAILURE_COUNTER = _counter("projectrag_ingestion_failures_total", "Total ingestion failures")
@@ -57,6 +67,21 @@ GRAPH_RETRIEVAL_DURATION = _histogram("projectrag_graph_retrieval_ms", "Graph re
 HYBRID_RETRIEVAL_DURATION = _histogram("projectrag_hybrid_retrieval_ms", "Hybrid retrieval duration in milliseconds")
 LLM_LATENCY = _histogram("projectrag_llm_latency_ms", "LLM generation latency in milliseconds")
 VALIDATION_CONFIDENCE = _histogram("projectrag_validation_confidence", "RAG answer validation confidence scores")
+WORKFLOW_RUN_COUNTER = _counter(
+    "projectrag_workflow_runs_total",
+    "Workflow run transitions by status",
+    ("status",),
+)
+AGENT_RUN_COUNTER = _counter(
+    "projectrag_agent_runs_total",
+    "Agent runs by name and status",
+    ("agent_name", "status"),
+)
+AGENT_RUN_LATENCY = _histogram(
+    "projectrag_agent_run_latency_ms",
+    "Agent run latency in milliseconds",
+    ("agent_name", "status"),
+)
 
 
 def metrics_enabled() -> bool:
@@ -85,3 +110,21 @@ def observe_query_metrics(metrics: dict) -> None:
 
 def observe_validation_confidence(confidence: float) -> None:
     VALIDATION_CONFIDENCE.observe(max(0.0, min(1.0, float(confidence))))
+
+
+def observe_http_request(method: str, path: str, status: int, duration_ms: float) -> None:
+    HTTP_REQUEST_COUNTER.labels(method=method.upper(), path=path, status=str(status)).inc()
+    HTTP_REQUEST_DURATION.labels(method=method.upper(), path=path, status=str(status)).observe(
+        max(0.0, float(duration_ms))
+    )
+
+
+def observe_workflow_transition(status: str) -> None:
+    WORKFLOW_RUN_COUNTER.labels(status=str(status or "unknown")).inc()
+
+
+def observe_agent_run(agent_name: str, status: str, latency_ms: int = 0) -> None:
+    safe_agent = str(agent_name or "unknown")
+    safe_status = str(status or "unknown")
+    AGENT_RUN_COUNTER.labels(agent_name=safe_agent, status=safe_status).inc()
+    AGENT_RUN_LATENCY.labels(agent_name=safe_agent, status=safe_status).observe(max(0, int(latency_ms)))

@@ -19,16 +19,16 @@ Expected containers:
 docker compose logs --tail=100
 ```
 
-Follow logs if investigating an issue:
+Use follow mode when investigating an issue:
 
 ```bash
 docker compose logs -f
 ```
 
-### 3. Basic health check
+### 3. Verify health
 
 ```bash
-curl http://localhost:8000/health
+curl http://127.0.0.1:8001/health
 ```
 
 Expected:
@@ -37,10 +37,10 @@ Expected:
 {"status":"ok","service":"ProjectRAG"}
 ```
 
-### 4. Deep health check
+### 4. Verify deep health
 
 ```bash
-curl http://localhost:8000/health/deep
+curl http://127.0.0.1:8001/health/deep
 ```
 
 Expected all dependencies to report `ok`:
@@ -70,7 +70,7 @@ docker exec -it projectrag-postgres psql -U projectrag -d projectrag -c "SELECT 
 ### 8. GraphDB query check
 
 ```bash
-curl -X POST http://localhost:8000/graph/query \
+curl -X POST http://127.0.0.1:8001/graph/query \
   -H "Content-Type: application/json" \
   -d '{"query":"PREFIX project: <http://projectrag.local/> SELECT ?s ?p ?o WHERE { ?s ?p ?o } LIMIT 5"}'
 ```

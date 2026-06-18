@@ -14,7 +14,7 @@ docker compose up -d
 docker exec -i projectrag-postgres psql -U projectrag -d projectrag < scripts/init_postgres.sql
 ```
 
-## 3. Start Ollama
+## 3. Start Ollama in a separate terminal
 
 In a separate terminal:
 
@@ -51,16 +51,16 @@ DATA
 python -m scripts.ingest_documents
 ```
 
-## 7. Start API
+## 7. Start the API
 
 ```bash
 uvicorn app.main:app --reload
 ```
 
-## 8. Test health
+## 8. Verify health
 
 ```bash
-curl http://localhost:8000/health
+curl http://127.0.0.1:8001/health
 ```
 
 Expected response:
@@ -69,15 +69,15 @@ Expected response:
 {"status":"ok","service":"ProjectRAG"}
 ```
 
-## 9. Test query
+## 9. Test a query
 
 ```bash
-curl -X POST http://localhost:8000/query \
+curl -X POST http://127.0.0.1:8001/query \
   -H "Content-Type: application/json" \
   -d '{"question": "What does VM1 depend on?"}'
 ```
 
-## 10. Test graph query script
+## 10. Run the graph query script
 
 ```bash
 python -m scripts.query_graph

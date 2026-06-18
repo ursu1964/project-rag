@@ -171,7 +171,7 @@ pip install -r requirements.txt
 Find the process:
 
 ```bash
-lsof -i :8000
+lsof -i :8001
 lsof -i :5432
 lsof -i :7200
 lsof -i :11434

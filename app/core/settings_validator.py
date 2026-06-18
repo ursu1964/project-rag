@@ -35,6 +35,8 @@ def validate_settings(config=settings) -> None:
         raise RuntimeError("CHUNK_OVERLAP must be smaller than CHUNK_SIZE")
     if int(getattr(config, "max_upload_size_bytes", 0)) <= 0:
         raise RuntimeError("MAX_UPLOAD_SIZE_BYTES must be greater than 0")
+    if int(getattr(config, "max_upload_files_per_request", 0)) <= 0:
+        raise RuntimeError("MAX_UPLOAD_FILES_PER_REQUEST must be greater than 0")
     if int(getattr(config, "ingest_max_files_per_run", 0)) <= 0:
         raise RuntimeError("INGEST_MAX_FILES_PER_RUN must be greater than 0")
 

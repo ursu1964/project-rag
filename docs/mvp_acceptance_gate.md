@@ -10,8 +10,8 @@ ProjectRAG MVP is accepted only when every gate below passes.
 | PostgreSQL schema initializes | Idempotent schema script completes without fatal errors | `make init-db` |
 | GraphDB responds | GraphDB HTTP endpoint is reachable | `curl http://localhost:7200/rest/repositories` |
 | Ollama responds | Ollama API is reachable | `curl http://localhost:11434/api/tags` |
-| Health endpoint works | API returns healthy application status | `curl http://127.0.0.1:8000/health` |
-| Query endpoint works | `/query` returns answer, route, validation, evidence, and metrics | `curl -X POST http://127.0.0.1:8000/query -H "Content-Type: application/json" -d '{"question":"What does VM1 depend on?"}'` |
+| Health endpoint works | API returns healthy application status | `curl http://127.0.0.1:8001/health` |
+| Query endpoint works | `/query` returns answer, route, validation, evidence, and metrics | `curl -X POST http://127.0.0.1:8001/query -H "Content-Type: application/json" -d '{"question":"What does VM1 depend on?"}'` |
 | Ingestion works | Documents from `data/raw` ingest and store chunks/facts | `make ingest` |
 | Graph extraction works | Infrastructure relationships are extracted into graph facts/triples | `python -m scripts.query_graph` |
 | Tests pass | Unit and non-external tests pass | `pytest -q` |

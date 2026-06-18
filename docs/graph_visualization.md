@@ -17,7 +17,7 @@ limit=1000
 Example:
 
 ```bash
-curl http://127.0.0.1:8000/graph/export
+curl http://127.0.0.1:8001/graph/export
 ```
 
 Response shape:

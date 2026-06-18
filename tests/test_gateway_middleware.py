@@ -152,12 +152,17 @@ def test_gateway_auth_required_oidc_denies_without_identity(monkeypatch):
     monkeypatch.setattr(settings, "rate_limit_per_minute", 0)
     monkeypatch.setattr(settings, "api_key", "")
     monkeypatch.setattr(settings, "enforce_rbac", False)
+    recorded = []
+    monkeypatch.setattr(middleware, "record_security_event", lambda **kwargs: recorded.append(kwargs) or kwargs)
 
     client = _build_gateway_test_client()
     response = client.get("/documents/ping")
 
     assert response.status_code == 401
     assert response.json()["detail"] == "Authentication required"
+    assert recorded[0]["action"] == "gateway_auth"
+    assert recorded[0]["decision"] == "deny"
+    assert recorded[0]["risk_level"] == "high"
 
 
 def test_gateway_local_mode_allows_trusted_header_and_sets_tenant(monkeypatch):

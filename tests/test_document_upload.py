@@ -54,3 +54,13 @@ def test_upload_document_ingests_when_requested(tmp_path, monkeypatch):
 
     assert result["ingestion"] == {"status": "ingested"}
     ingest_file.assert_called_once()
+
+
+def test_upload_document_rejects_too_many_files(monkeypatch):
+    monkeypatch.setattr(routes_documents.settings, "max_upload_files_per_request", 1)
+
+    with pytest.raises(HTTPException) as exc:
+        routes_documents._save_uploads([_upload("one.txt"), _upload("two.txt")])
+
+    assert exc.value.status_code == 400
+    assert "Too many upload files" in str(exc.value.detail)

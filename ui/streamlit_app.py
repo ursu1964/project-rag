@@ -6,13 +6,18 @@ GraphDB, or local files directly except for user-selected upload content.
 
 from __future__ import annotations
 
+import csv
+import io
+import json
 import os
+from datetime import datetime
 from typing import Any
 
 import requests
 import streamlit as st
+import streamlit.components.v1 as components
 
-DEFAULT_API_URL = os.getenv("PROJECTRAG_API_URL", "http://127.0.0.1:8000")
+DEFAULT_API_URL = os.getenv("PROJECTRAG_API_URL", "http://127.0.0.1:8001")
 GRAPH_FACTS_QUERY = """
 PREFIX project: <http://projectrag.local/>
 SELECT ?subject ?predicate ?object
@@ -70,6 +75,140 @@ def as_list(payload: dict[str, Any] | list[Any] | None) -> list[Any]:
     return payload if isinstance(payload, list) else []
 
 
+def to_csv_bytes(rows: list[dict[str, Any]]) -> bytes:
+    """Serialize row dictionaries to CSV bytes for download buttons."""
+    if not rows:
+        return b""
+    fieldnames: list[str] = []
+    for row in rows:
+        for key in row.keys():
+            if key not in fieldnames:
+                fieldnames.append(key)
+    buffer = io.StringIO()
+    writer = csv.DictWriter(buffer, fieldnames=fieldnames)
+    writer.writeheader()
+    for row in rows:
+        writer.writerow({key: row.get(key) for key in fieldnames})
+    return buffer.getvalue().encode("utf-8")
+
+
+def parse_timestamp(value: Any) -> datetime | None:
+    """Parse ISO timestamp strings from API payloads."""
+    if not value:
+        return None
+    text = str(value).strip()
+    if not text:
+        return None
+    if text.endswith("Z"):
+        text = text[:-1] + "+00:00"
+    try:
+        return datetime.fromisoformat(text)
+    except ValueError:
+        return None
+
+
+def relative_time_label(value: Any) -> str:
+    ts = parse_timestamp(value)
+    if ts is None:
+        return "n/a"
+    now = datetime.now(ts.tzinfo) if ts.tzinfo else datetime.now()
+    delta = now - ts
+    seconds = max(int(delta.total_seconds()), 0)
+    if seconds < 60:
+        return f"{seconds}s ago"
+    minutes = seconds // 60
+    if minutes < 60:
+        return f"{minutes}m ago"
+    hours = minutes // 60
+    if hours < 24:
+        return f"{hours}h ago"
+    days = hours // 24
+    return f"{days}d ago"
+
+
+def confidence_band(confidence: Any) -> str:
+    """Return human-friendly confidence quality band."""
+    try:
+        value = float(confidence)
+    except (TypeError, ValueError):
+        return "unknown"
+    if value >= 0.8:
+        return "high"
+    if value >= 0.6:
+        return "medium"
+    return "low"
+
+
+def render_quality_badges(validation: dict[str, Any]) -> None:
+    """Render quality badges for groundedness, confidence, and validation pass state."""
+    grounded = bool(validation.get("grounded", False))
+    conf_band = confidence_band(validation.get("confidence"))
+    passed = validation.get("passed")
+    validation_label = "passed" if passed is True else "failed" if passed is False else "unknown"
+
+    st.markdown(
+        """
+        <style>
+        .pr-badge-row { display:flex; gap:8px; flex-wrap:wrap; margin-bottom: 0.5rem; }
+        .pr-badge { padding: 0.25rem 0.6rem; border-radius: 999px; font-size: 0.85rem; border: 1px solid #d1d5db; background: #f8fafc; }
+        .pr-ok { border-color: #22c55e; background: #ecfdf5; color: #166534; }
+        .pr-warn { border-color: #f59e0b; background: #fffbeb; color: #92400e; }
+        .pr-bad { border-color: #ef4444; background: #fef2f2; color: #991b1b; }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    grounded_class = "pr-ok" if grounded else "pr-bad"
+    conf_class = "pr-ok" if conf_band == "high" else "pr-warn" if conf_band == "medium" else "pr-bad"
+    validation_class = "pr-ok" if validation_label == "passed" else "pr-bad" if validation_label == "failed" else "pr-warn"
+    st.markdown(
+        (
+            f"<div class='pr-badge-row'>"
+            f"<span class='pr-badge {grounded_class}'>grounded: {'yes' if grounded else 'no'}</span>"
+            f"<span class='pr-badge {conf_class}'>confidence: {conf_band}</span>"
+            f"<span class='pr-badge {validation_class}'>validation: {validation_label}</span>"
+            f"</div>"
+        ),
+        unsafe_allow_html=True,
+    )
+
+
+def render_copy_button(label: str, text: str, key: str) -> None:
+    """Render a browser-side copy button for text content."""
+    safe_text = json.dumps(text)
+    safe_label = label.replace("<", "&lt;").replace(">", "&gt;")
+    safe_key = key.replace("\"", "")
+    components.html(
+        f"""
+        <button id=\"copy-{safe_key}\" style=\"
+            background:#f8fafc;
+            border:1px solid #cbd5e1;
+            border-radius:8px;
+            padding:6px 10px;
+            cursor:pointer;
+            font-size:13px;
+        \">{safe_label}</button>
+        <script>
+            const btn = document.getElementById('copy-{safe_key}');
+            if (btn) {{
+                btn.onclick = async () => {{
+                    try {{
+                        await navigator.clipboard.writeText({safe_text});
+                        btn.textContent = 'Copied';
+                        setTimeout(() => btn.textContent = {json.dumps(label)}, 1200);
+                    }} catch (e) {{
+                        btn.textContent = 'Copy failed';
+                        setTimeout(() => btn.textContent = {json.dumps(label)}, 1200);
+                    }}
+                }};
+            }}
+        </script>
+        """,
+        height=42,
+    )
+
+
 def render_evidence(title: str, evidence: Any) -> None:
     """Render evidence consistently for lists and dictionaries."""
     with st.expander(title, expanded=False):
@@ -98,7 +237,8 @@ def render_dashboard_panel() -> None:
     health, health_error = request_json("GET", "/health/deep")
     documents, documents_error = request_json("GET", "/documents")
     graph, graph_error = request_json("GET", "/graph/export?limit=500")
-    workflows, workflows_error = request_json("GET", "/workflows?limit=10")
+    workflows, workflows_error = request_json("GET", "/workflows?limit=50")
+    workflow_rows = [row for row in as_list(workflows) if isinstance(row, dict)]
 
     cols = st.columns(4)
     cols[0].metric("API", "offline" if health_error else "online")
@@ -107,6 +247,34 @@ def render_dashboard_panel() -> None:
     graph_nodes = graph.get("nodes", []) if isinstance(graph, dict) else []
     cols[2].metric("Graph nodes", len(graph_nodes))
     cols[3].metric("Graph edges", len(graph_edges))
+
+    queue_statuses = {"pending", "queued", "running", "in_progress"}
+    queued_count = sum(1 for row in workflow_rows if str(row.get("status", "")).lower() in queue_statuses)
+    successful = [
+        row
+        for row in workflow_rows
+        if str(row.get("status", "")).lower() in {"completed", "success", "passed"}
+    ]
+    latest_success = max(
+        successful,
+        key=lambda row: (parse_timestamp(row.get("updated_at")) or parse_timestamp(row.get("created_at")) or datetime.min),
+        default=None,
+    )
+
+    st.subheader("Live status strip")
+    strip = st.columns(6)
+    strip[0].metric("API", "online" if not health_error else "offline")
+    strip[1].metric("PostgreSQL", str((health or {}).get("postgres", "unknown") if isinstance(health, dict) else "unknown"))
+    strip[2].metric("GraphDB", str((health or {}).get("graphdb", "unknown") if isinstance(health, dict) else "unknown"))
+    strip[3].metric("Ollama", str((health or {}).get("ollama", "unknown") if isinstance(health, dict) else "unknown"))
+    strip[4].metric("Ingestion queue", queued_count)
+    strip[5].metric(
+        "Last success",
+        relative_time_label(
+            latest_success.get("updated_at") if isinstance(latest_success, dict) else None
+            or latest_success.get("created_at") if isinstance(latest_success, dict) else None
+        ),
+    )
 
     if isinstance(health, dict):
         st.subheader("Dependency health")
@@ -170,7 +338,15 @@ def render_query_panel() -> None:
             return
 
         st.subheader("Answer")
-        st.markdown(payload.get("answer") or "No answer returned.")
+        answer_text = str(payload.get("answer") or "No answer returned.")
+        st.markdown(answer_text)
+
+        copy_cols = st.columns(2)
+        with copy_cols[0]:
+            render_copy_button("Copy answer", answer_text, key="answer")
+        with copy_cols[1]:
+            citations = payload.get("citations") or []
+            render_copy_button("Copy citations", json.dumps(citations, indent=2), key="citations")
 
         cols = st.columns(4)
         cols[0].metric("Route", payload.get("route") or "unknown")
@@ -181,6 +357,9 @@ def render_query_panel() -> None:
         cols[2].metric("Grounded", "yes" if grounded else "no")
         metrics = payload.get("metrics") or {}
         cols[3].metric("Duration", f"{metrics.get('duration_ms', 0)} ms")
+
+        if isinstance(validation, dict):
+            render_quality_badges(validation)
 
         policy_decision = payload.get("policy_decision") or {}
         if policy_decision:
@@ -194,7 +373,6 @@ def render_query_panel() -> None:
         st.subheader("Validation")
         st.json(validation)
 
-        citations = payload.get("citations") or []
         if citations:
             st.subheader("Citations")
             st.dataframe(citations, use_container_width=True)
@@ -334,15 +512,55 @@ def render_audit_panel() -> None:
     st.header("Audit and Governance Console")
     st.caption("Workflow runs, agent traces, and validation outputs for explainable operation.")
 
-    workflows, workflows_error = request_json("GET", "/workflows?limit=50")
-    agent_runs, agent_error = request_json("GET", "/agents/runs?limit=50")
-    validation, validation_error = request_json("GET", "/validation/results?limit=50")
+    workflows, workflows_error = request_json("GET", "/workflows?limit=200")
+    agent_runs, agent_error = request_json("GET", "/agents/runs?limit=200")
+    validation, validation_error = request_json("GET", "/validation/results?limit=200")
     evaluation_report, evaluation_error = request_json("GET", "/evaluation/report")
 
+    workflow_rows = [row for row in as_list(workflows) if isinstance(row, dict)]
+    agent_rows = [row for row in as_list(agent_runs) if isinstance(row, dict)]
+    validation_rows = [row for row in as_list(validation) if isinstance(row, dict)]
+
+    st.subheader("Filters")
+    filter_cols = st.columns(4)
+    statuses = sorted({str(row.get("status", "unknown")) for row in workflow_rows if row.get("status")})
+    selected_statuses = filter_cols[0].multiselect("Workflow status", options=statuses)
+    agent_names = sorted({str(row.get("agent_name", "")) for row in agent_rows if row.get("agent_name")})
+    selected_agents = filter_cols[1].multiselect("Agent name", options=agent_names)
+    workflow_ids = sorted({str(row.get("workflow_id", "")) for row in agent_rows if row.get("workflow_id")})
+    selected_workflow = filter_cols[2].selectbox("Workflow id", options=["All"] + workflow_ids)
+    date_window = filter_cols[3].date_input("Created date range", value=())
+
+    start_date = None
+    end_date = None
+    if isinstance(date_window, tuple) and len(date_window) == 2:
+        start_date, end_date = date_window
+
+    def matches_filters(row: dict[str, Any], include_status: bool, include_agent: bool) -> bool:
+        if include_status and selected_statuses:
+            if str(row.get("status", "")) not in selected_statuses:
+                return False
+        if include_agent and selected_agents:
+            if str(row.get("agent_name", "")) not in selected_agents:
+                return False
+        if selected_workflow != "All" and str(row.get("workflow_id", "")) != selected_workflow:
+            return False
+        if start_date and end_date:
+            ts = parse_timestamp(row.get("created_at") or row.get("updated_at"))
+            if ts is None:
+                return False
+            if not (start_date <= ts.date() <= end_date):
+                return False
+        return True
+
+    filtered_workflows = [row for row in workflow_rows if matches_filters(row, include_status=True, include_agent=False)]
+    filtered_agents = [row for row in agent_rows if matches_filters(row, include_status=True, include_agent=True)]
+    filtered_validation = [row for row in validation_rows if matches_filters(row, include_status=False, include_agent=False)]
+
     cols = st.columns(4)
-    cols[0].metric("Workflow runs", len(as_list(workflows)))
-    cols[1].metric("Agent runs", len(as_list(agent_runs)))
-    cols[2].metric("Validation results", len(as_list(validation)))
+    cols[0].metric("Workflow runs", len(filtered_workflows))
+    cols[1].metric("Agent runs", len(filtered_agents))
+    cols[2].metric("Validation results", len(filtered_validation))
     eval_summary = evaluation_report.get("summary", {}) if isinstance(evaluation_report, dict) else {}
     cols[3].metric("Eval questions", eval_summary.get("total_questions", 0))
 
@@ -350,19 +568,40 @@ def render_audit_panel() -> None:
         st.error(workflows_error)
     else:
         st.subheader("Recent workflows")
-        st.dataframe(as_list(workflows), use_container_width=True)
+        st.download_button(
+            "Export workflows CSV",
+            data=to_csv_bytes(filtered_workflows),
+            file_name="workflows.csv",
+            mime="text/csv",
+            disabled=not filtered_workflows,
+        )
+        st.dataframe(filtered_workflows, use_container_width=True)
 
     if agent_error:
         st.warning(agent_error)
     else:
         with st.expander("Agent runs", expanded=False):
-            st.dataframe(as_list(agent_runs), use_container_width=True)
+            st.download_button(
+                "Export agent runs CSV",
+                data=to_csv_bytes(filtered_agents),
+                file_name="agent_runs.csv",
+                mime="text/csv",
+                disabled=not filtered_agents,
+            )
+            st.dataframe(filtered_agents, use_container_width=True)
 
     if validation_error:
         st.warning(validation_error)
     else:
         with st.expander("Validation results", expanded=True):
-            st.dataframe(as_list(validation), use_container_width=True)
+            st.download_button(
+                "Export validation CSV",
+                data=to_csv_bytes(filtered_validation),
+                file_name="validation_results.csv",
+                mime="text/csv",
+                disabled=not filtered_validation,
+            )
+            st.dataframe(filtered_validation, use_container_width=True)
 
     st.subheader("Evaluation report")
     if evaluation_error:
@@ -381,6 +620,39 @@ def render_audit_panel() -> None:
             st.markdown(str(evaluation_report.get("markdown") or ""))
     else:
         st.info("No generated evaluation report found yet.")
+
+
+def render_operations_panel() -> None:
+    st.header("Operations: Retry Queue")
+    st.caption("Durable job retries with ETA derived from next_retry_at.")
+
+    queue_payload, queue_error = request_json("GET", "/operations/jobs/retry-queue?limit=200")
+    if queue_error:
+        st.error(queue_error)
+        return
+
+    if not isinstance(queue_payload, dict):
+        st.error("Unexpected operations response.")
+        return
+
+    jobs = as_list(queue_payload.get("jobs"))
+    cols = st.columns(3)
+    cols[0].metric("Retry queue", int(queue_payload.get("total", 0) or 0))
+    cols[1].metric("Due now", int(queue_payload.get("due_now", 0) or 0))
+    cols[2].metric("API status", str(queue_payload.get("status", "unknown")))
+
+    if not jobs:
+        st.info("No queued or retrying jobs.")
+        return
+
+    st.download_button(
+        "Export retry queue CSV",
+        data=to_csv_bytes([row for row in jobs if isinstance(row, dict)]),
+        file_name="retry_queue.csv",
+        mime="text/csv",
+        disabled=not jobs,
+    )
+    st.dataframe(jobs, use_container_width=True)
 
 
 def render_presentation_panel() -> None:
@@ -445,8 +717,8 @@ def main() -> None:
         st.markdown("---")
         st.caption("Recommended demo order: Cockpit → Documents → Query → Topology → Audit → Presentation")
 
-    tab_dashboard, tab_query, tab_documents, tab_graph, tab_audit, tab_presentation = st.tabs(
-        ["Cockpit", "Query", "Documents", "Topology", "Audit", "Presentation"]
+    tab_dashboard, tab_query, tab_documents, tab_graph, tab_audit, tab_operations, tab_presentation = st.tabs(
+        ["Cockpit", "Query", "Documents", "Topology", "Audit", "Operations", "Presentation"]
     )
     with tab_dashboard:
         render_dashboard_panel()
@@ -458,6 +730,8 @@ def main() -> None:
         render_graph_panel()
     with tab_audit:
         render_audit_panel()
+    with tab_operations:
+        render_operations_panel()
     with tab_presentation:
         render_presentation_panel()
 

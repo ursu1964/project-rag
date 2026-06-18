@@ -28,6 +28,7 @@ class Settings(BaseSettings):
 
     graphdb_url: str = "http://localhost:7200"
     graphdb_repository: str = "projectrag"
+    graphdb_ensure_repository_on_startup: bool = True
 
     ollama_url: str = "http://localhost:11434"
     ollama_model: str = "llama3.1:8b"
@@ -37,6 +38,7 @@ class Settings(BaseSettings):
     chunk_overlap: int = 150
     top_k: int = 5
     max_upload_size_bytes: int = 5 * 1024 * 1024
+    max_upload_files_per_request: int = 1
     ingest_max_files_per_run: int = 200
     use_llm_router: bool = False
     use_llm_judge: bool = False
@@ -46,6 +48,8 @@ class Settings(BaseSettings):
 
     api_key: str = ""
     rate_limit_per_minute: int = 0
+    # Per-endpoint rate limits (JSON string: {"POST /ingest": 5, "POST /query": 10})
+    rate_limit_per_endpoint: str = "{}"
     request_audit_enabled: bool = True
     enforce_rbac: bool = False
     auth_required: bool = False

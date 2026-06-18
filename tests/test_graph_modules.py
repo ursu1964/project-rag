@@ -15,6 +15,7 @@ from app.ragos.cognitive_cache import clear_cache
 
 def test_sparql_query_posts_expected_request(monkeypatch):
     clear_cache()
+    graphdb_client._repository_ready = True
     response = MagicMock()
     response.json.return_value = {"results": {"bindings": []}}
     get = MagicMock(return_value=response)
@@ -29,6 +30,7 @@ def test_sparql_query_posts_expected_request(monkeypatch):
 
 def test_sparql_query_uses_cache(monkeypatch):
     clear_cache()
+    graphdb_client._repository_ready = True
     response = MagicMock()
     response.json.return_value = {"results": {"bindings": [{"subject": "VM1"}]}}
     get = MagicMock(return_value=response)
@@ -44,6 +46,7 @@ def test_sparql_query_uses_cache(monkeypatch):
 
 def test_insert_turtle_posts_turtle(monkeypatch):
     clear_cache()
+    graphdb_client._repository_ready = True
     response = MagicMock()
     post = MagicMock(return_value=response)
     monkeypatch.setattr(graphdb_client.requests, "post", post)
@@ -56,6 +59,7 @@ def test_insert_turtle_posts_turtle(monkeypatch):
 
 def test_insert_turtle_invalidates_graph_cache(monkeypatch):
     clear_cache()
+    graphdb_client._repository_ready = True
     get_response = MagicMock()
     get_response.json.return_value = {"results": {"bindings": []}}
     get = MagicMock(return_value=get_response)
@@ -73,6 +77,7 @@ def test_insert_turtle_invalidates_graph_cache(monkeypatch):
 
 def test_sparql_update_posts_update(monkeypatch):
     clear_cache()
+    graphdb_client._repository_ready = True
     response = MagicMock()
     post = MagicMock(return_value=response)
     monkeypatch.setattr(graphdb_client.requests, "post", post)

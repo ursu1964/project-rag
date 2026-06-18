@@ -17,7 +17,7 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--port",
         type=int,
-        default=int(os.getenv("APP_PORT", "8000")),
+        default=int(os.getenv("APP_PORT", "8001")),
         help="API port",
     )
     parser.add_argument("--reload", action="store_true", help="Enable uvicorn reload mode")

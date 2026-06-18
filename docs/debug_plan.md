@@ -120,8 +120,8 @@ Impact:
 
 ```bash
 docker compose ps
-curl http://127.0.0.1:8000/health
-curl http://127.0.0.1:8000/health/deep
+curl http://127.0.0.1:8001/health
+curl http://127.0.0.1:8001/health/deep
 curl http://127.0.0.1:7200/rest/repositories
 curl http://127.0.0.1:11434/api/tags
 ```
@@ -171,7 +171,7 @@ Pass criteria:
 ### Phase 4: Validate graph extraction and export
 
 ```bash
-curl http://127.0.0.1:8000/graph/export?limit=20
+curl http://127.0.0.1:8001/graph/export?limit=20
 python -m scripts.query_graph
 ```
 
@@ -183,7 +183,7 @@ Pass criteria:
 ### Phase 5: Validate query quality
 
 ```bash
-curl -X POST http://127.0.0.1:8000/query \
+curl -X POST http://127.0.0.1:8001/query \
   -H "Content-Type: application/json" \
   -d '{"question":"What does VM1 depend on?"}'
 ```

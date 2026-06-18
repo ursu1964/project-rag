@@ -704,6 +704,7 @@ CREATE TABLE IF NOT EXISTS background_jobs (
     resource_id TEXT,
     attempts INTEGER NOT NULL DEFAULT 0,
     max_attempts INTEGER NOT NULL DEFAULT 3,
+    next_retry_at TIMESTAMPTZ,
     error TEXT,
     metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -728,5 +729,22 @@ CREATE INDEX IF NOT EXISTS idx_background_jobs_type ON background_jobs(job_type)
 CREATE INDEX IF NOT EXISTS idx_background_jobs_status ON background_jobs(status);
 CREATE INDEX IF NOT EXISTS idx_background_jobs_resource ON background_jobs(resource_type, resource_id);
 CREATE INDEX IF NOT EXISTS idx_background_jobs_created_at ON background_jobs(created_at);
+CREATE INDEX IF NOT EXISTS idx_background_jobs_next_retry_at ON background_jobs(next_retry_at);
 CREATE INDEX IF NOT EXISTS idx_idempotency_results_key ON idempotency_results(idempotency_key);
 CREATE INDEX IF NOT EXISTS idx_idempotency_results_expires_at ON idempotency_results(expires_at);
+
+CREATE TABLE IF NOT EXISTS workflow_checkpoints (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    workflow_id UUID NOT NULL REFERENCES workflow_runs(id) ON DELETE CASCADE,
+    step_name TEXT NOT NULL,
+    state JSONB NOT NULL DEFAULT '{}'::jsonb,
+    status TEXT NOT NULL DEFAULT 'running',
+    error TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    UNIQUE (workflow_id, step_name)
+);
+
+CREATE INDEX IF NOT EXISTS idx_workflow_checkpoints_workflow_id ON workflow_checkpoints(workflow_id);
+CREATE INDEX IF NOT EXISTS idx_workflow_checkpoints_status ON workflow_checkpoints(status);
+CREATE INDEX IF NOT EXISTS idx_workflow_checkpoints_updated_at ON workflow_checkpoints(updated_at);

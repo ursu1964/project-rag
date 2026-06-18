@@ -11,6 +11,7 @@ from app.ragos.cognitive_cache import cache_graph_query, get_cached_graph_query,
 
 _TIMEOUT_SECONDS = 60
 logger = get_logger(__name__)
+_repository_ready = False
 
 
 def _repository_url() -> str:
@@ -63,7 +64,29 @@ def create_repository() -> None:
         response.raise_for_status()
 
 
+def ensure_repository_ready() -> None:
+    """Ensure configured GraphDB repository exists and is reachable.
+
+    This is safe to call repeatedly; success is memoized for process lifetime.
+    """
+    global _repository_ready
+    if _repository_ready:
+        return
+
+    response = requests.get(
+        f"{settings.graphdb_url.rstrip('/')}/rest/repositories/{settings.graphdb_repository}",
+        timeout=_TIMEOUT_SECONDS,
+    )
+    if response.status_code == 404:
+        create_repository()
+    elif response.status_code not in {200, 204}:
+        response.raise_for_status()
+
+    _repository_ready = True
+
+
 def sparql_query(query: str) -> dict:
+    ensure_repository_ready()
     cached = get_cached_graph_query(query)
     if isinstance(cached, dict):
         logger.info("Returning cached GraphDB SPARQL query result")
@@ -91,6 +114,7 @@ def sparql_query(query: str) -> dict:
 
 
 def insert_turtle(turtle_data: str) -> None:
+    ensure_repository_ready()
     logger.info("Inserting Turtle data into GraphDB")
     response = requests.post(
         f"{_repository_url()}/statements",
@@ -112,6 +136,7 @@ def insert_turtle(turtle_data: str) -> None:
 
 def sparql_update(update: str) -> None:
     """Execute a SPARQL update against the configured repository."""
+    ensure_repository_ready()
     logger.info("Executing GraphDB SPARQL update")
     response = requests.post(
         f"{_repository_url()}/statements",
