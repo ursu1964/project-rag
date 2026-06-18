@@ -51,6 +51,48 @@ def _bindings(result: dict[str, Any]) -> list[dict[str, Any]]:
     return list(result.get("results", {}).get("bindings", [])) if isinstance(result, dict) else []
 
 
+def _binding_value(binding: dict[str, Any], key: str) -> str:
+    value = binding.get(key)
+    if isinstance(value, dict):
+        value = value.get("value")
+    text = str(value or "")
+    if text.startswith("http://projectrag.local/"):
+        return text.rsplit("/", 1)[-1]
+    return text.rsplit("#", 1)[-1] if "#" in text else text
+
+
+def _normalize_bindings(entity: str, section: str, rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    normalized: list[dict[str, Any]] = []
+    for row in rows:
+        item = {key: _binding_value(row, key) for key in row}
+        if section == "outgoing":
+            item["subject"] = entity
+            item["fact_text"] = " ".join(
+                part for part in (entity, item.get("predicate"), item.get("object")) if part
+            )
+        elif section == "incoming":
+            item["object"] = entity
+            item["fact_text"] = " ".join(
+                part for part in (item.get("subject"), item.get("predicate"), entity) if part
+            )
+        elif item.get("middle") or item.get("dependency"):
+            item["subject"] = entity
+            item["predicate"] = "dependsOn"
+            item["object"] = item.get("dependency") or item.get("middle")
+            item["fact_text"] = " ".join(
+                part
+                for part in (entity, "dependsOn", item.get("middle"), "dependsOn", item.get("dependency"))
+                if part
+            )
+        else:
+            item["object"] = entity
+            item["fact_text"] = " ".join(
+                part for part in (item.get("impacted"), item.get("predicate"), entity) if part
+            )
+        normalized.append(item)
+    return normalized
+
+
 def _detect_query_type(question: str) -> str:
     normalized = question.lower()
     if re.search(r"\bwhat\s+breaks\s+if\b", normalized) or "fails" in normalized:
@@ -102,6 +144,10 @@ def run(state: dict) -> dict:
         paths = _bindings(sparql_query(impact_query(entity)))
     if query_type == "outgoing":
         paths = _bindings(sparql_query(two_hop_dependency_query(entity)))
+
+    incoming = _normalize_bindings(entity, "incoming", incoming)
+    outgoing = _normalize_bindings(entity, "outgoing", outgoing)
+    paths = _normalize_bindings(entity, "paths", paths)
 
     graph_context = {
         "entity": entity,

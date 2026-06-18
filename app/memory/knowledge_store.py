@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from typing import Any
 
+from app.graph.triple_builder import sanitize_entity
 from app.memory.memory_store import add_memory, search_memory
 from app.memory.postgres import execute
-from app.graph.triple_builder import sanitize_entity
 
 
 def store_fact(content: str, metadata: dict[str, Any] | None = None) -> str:

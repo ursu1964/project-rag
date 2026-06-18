@@ -97,6 +97,25 @@ This starts:
 docker exec -i projectrag-postgres psql -U projectrag -d projectrag < scripts/init_postgres.sql
 ```
 
+## Alembic Migrations
+
+ProjectRAG now includes Alembic baseline migration scaffolding.
+
+- Use `PROJECTRAG_DATABASE_URL` to override database URL when needed.
+- Otherwise Alembic reads database settings from `app/core/config.py`.
+
+Run migrations:
+
+```bash
+alembic upgrade head
+```
+
+Check current revision:
+
+```bash
+alembic current
+```
+
 ## Start Ollama and Pull Models
 
 In a separate terminal:

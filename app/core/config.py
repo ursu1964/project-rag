@@ -1,8 +1,11 @@
 """Application configuration."""
 
 from functools import lru_cache
+from pathlib import Path
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 
 class Settings(BaseSettings):
@@ -17,6 +20,12 @@ class Settings(BaseSettings):
     postgres_user: str = "projectrag"
     postgres_password: str = "projectrag_password"
 
+    redis_url: str = "redis://localhost:6379/0"
+
+    qdrant_url: str = "http://localhost:6333"
+    qdrant_api_key: str = ""
+    qdrant_collection: str = "projectrag_chunks"
+
     graphdb_url: str = "http://localhost:7200"
     graphdb_repository: str = "projectrag"
 
@@ -27,12 +36,32 @@ class Settings(BaseSettings):
     chunk_size: int = 1000
     chunk_overlap: int = 150
     top_k: int = 5
+    max_upload_size_bytes: int = 5 * 1024 * 1024
+    ingest_max_files_per_run: int = 200
     use_llm_router: bool = False
     use_llm_judge: bool = False
+    enable_claude_provider: bool = False
+    claude_model: str = "claude-3-5-sonnet"
     graph_max_depth: int = 3
 
+    api_key: str = ""
+    rate_limit_per_minute: int = 0
+    request_audit_enabled: bool = True
+    enforce_rbac: bool = False
+    auth_required: bool = False
+    auth_mode: str = "local"  # local | oidc
+    tenant_header_name: str = "x-projectrag-tenant-id"
+    oidc_issuer: str = ""
+    oidc_audience: str = ""
+
+    enable_cloud_connectors: bool = False
+    embedding_cache_ttl_seconds: int = 86400
+    otel_enabled: bool = False
+    otel_service_name: str = "projectrag-api"
+    otel_exporter_otlp_endpoint: str = "http://otel-collector:4318/v1/traces"
+
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=PROJECT_ROOT / ".env",
         env_file_encoding="utf-8",
         extra="ignore",
     )

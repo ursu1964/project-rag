@@ -49,3 +49,30 @@ def list_graph_facts(entity: str) -> list[dict[str, Any]]:
         """,
         (entity, entity),
     )
+
+
+def list_all_graph_facts(limit: int = 1000) -> list[dict[str, Any]]:
+    """List recent graph facts for export/visualization."""
+    return fetch_all(
+        """
+        SELECT id, subject, predicate, object, source_document_id, source_chunk_id,
+               confidence, created_at, metadata
+        FROM graph_facts
+        ORDER BY created_at DESC
+        LIMIT %s
+        """,
+        (limit,),
+    )
+
+
+def count_graph_facts_for_document(document_id: str) -> int:
+    """Count graph facts associated with a source document."""
+    rows = fetch_all(
+        """
+        SELECT COUNT(*) AS count
+        FROM graph_facts
+        WHERE source_document_id = %s
+        """,
+        (document_id,),
+    )
+    return int(rows[0]["count"]) if rows else 0

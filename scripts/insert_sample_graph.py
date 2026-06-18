@@ -3,7 +3,6 @@
 from app.graph.graphdb_client import insert_turtle
 from app.graph.triple_builder import build_triple, build_turtle
 
-
 if __name__ == "__main__":
     turtle = build_turtle(
         [
@@ -15,8 +14,8 @@ if __name__ == "__main__":
     insert_turtle(turtle)
     print("Inserted sample ProjectRAG graph.")
 
-from pathlib import Path
 import sys
+from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT_ROOT))

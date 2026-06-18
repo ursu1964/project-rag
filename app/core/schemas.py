@@ -37,6 +37,8 @@ class QueryResponse(BaseModel):
     answer: str | None = None
     validation: ValidationResult | dict[str, Any] | None = None
     evidence: QueryEvidence = Field(default_factory=QueryEvidence)
+    citations: list[dict[str, Any]] = Field(default_factory=list)
+    policy_decision: dict[str, Any] = Field(default_factory=dict)
     metrics: QueryMetrics = Field(default_factory=QueryMetrics)
 
     model_config = ConfigDict(extra="allow")

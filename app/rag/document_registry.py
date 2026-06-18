@@ -1,6 +1,6 @@
-from __future__ import annotations
-
 """Document registration helpers."""
+
+from __future__ import annotations
 
 import hashlib
 from pathlib import Path

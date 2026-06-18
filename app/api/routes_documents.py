@@ -6,10 +6,15 @@ from pathlib import Path
 
 from fastapi import APIRouter, HTTPException, Query, Request, UploadFile
 
+from app.core.config import settings
 from app.core.metrics import INGESTION_COUNTER, REQUEST_COUNTER
+from app.core.metrics import INGESTION_FAILURE_COUNTER, PII_SCAN_COUNTER
 from app.core.schemas import DocumentRecord, IngestResponse
-from app.repositories.documents_repository import list_documents as repository_list_documents
 from app.rag.ingestion import ingest_directory, ingest_file
+from app.security.audit import record_security_event
+from app.repositories.documents_repository import delete_document as repository_delete_document
+from app.repositories.documents_repository import get_document as repository_get_document
+from app.repositories.documents_repository import list_documents as repository_list_documents
 from app.tools.file_tools import safe_write_upload
 
 router = APIRouter()
@@ -23,9 +28,38 @@ def list_documents() -> list[dict]:
     return repository_list_documents()
 
 
+@router.delete("/documents/{document_id}")
+def delete_document(document_id: str) -> dict[str, str]:
+    REQUEST_COUNTER.labels("/documents/{document_id}:delete").inc()
+    if not repository_delete_document(document_id):
+        raise HTTPException(status_code=404, detail="Document not found")
+    return {"status": "deleted", "document_id": document_id}
+
+
+@router.post("/documents/{document_id}/reindex")
+def reindex_document(document_id: str) -> dict[str, object]:
+    REQUEST_COUNTER.labels("/documents/{document_id}/reindex").inc()
+    document = repository_get_document(document_id)
+    if document is None:
+        raise HTTPException(status_code=404, detail="Document not found")
+
+    source = Path(str(document["source"]))
+    if not source.exists():
+        raise HTTPException(status_code=404, detail="Document source file not found")
+
+    if not repository_delete_document(document_id):
+        raise HTTPException(status_code=404, detail="Document not found")
+
+    return {
+        "status": "reindexed",
+        "previous_document_id": document_id,
+        "result": ingest_file(source),
+    }
+
+
 def _save_upload(file: UploadFile, ingest: bool = False) -> dict[str, object]:
     try:
-        destination = safe_write_upload(file, _RAW_DATA_DIR)
+        destination = safe_write_upload(file, _RAW_DATA_DIR, max_bytes=settings.max_upload_size_bytes)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
@@ -42,12 +76,33 @@ async def upload_document(request: Request, ingest: bool = Query(default=False))
     file = form.get("file")
     if not isinstance(file, UploadFile):
         raise HTTPException(status_code=400, detail="Missing upload file")
-    return _save_upload(file, ingest=ingest)
+    result = _save_upload(file, ingest=ingest)
+    record_security_event(
+        action="upload",
+        resource="/documents/upload",
+        decision="allow",
+        risk_level="low",
+        metadata={"filename": result.get("filename"), "ingested": ingest},
+    )
+    return result
 
 
 @router.post("/ingest", response_model=IngestResponse)
 def ingest_raw_documents() -> dict[str, object]:
     REQUEST_COUNTER.labels("/ingest").inc()
     INGESTION_COUNTER.inc()
-    results = ingest_directory("data/raw")
+    results = ingest_directory("data/raw", max_files=settings.ingest_max_files_per_run)
+    pii_flagged = sum(int(r.get("pii_chunks_sanitised") or 0) for r in results if isinstance(r, dict))
+    failed = sum(1 for r in results if isinstance(r, dict) and r.get("status") == "failed")
+    if pii_flagged > 0:
+        PII_SCAN_COUNTER.inc()
+    if failed > 0:
+        INGESTION_FAILURE_COUNTER.inc()
+    record_security_event(
+        action="ingest",
+        resource="/ingest",
+        decision="allow",
+        risk_level="medium" if pii_flagged > 0 else "low",
+        metadata={"total_files": len(results), "pii_chunks_sanitised": pii_flagged},
+    )
     return {"status": "ok", "results": results}

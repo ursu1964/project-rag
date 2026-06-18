@@ -1,4 +1,11 @@
-from app.agents import chief_agent, cost_agent, execution_agent, learning_agent, planning_agent, security_agent
+from app.agents import (
+    chief_agent,
+    cost_agent,
+    execution_agent,
+    learning_agent,
+    planning_agent,
+    security_agent,
+)
 from app.workflows.cognitive_workflow import build_workflow
 
 

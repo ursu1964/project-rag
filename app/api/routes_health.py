@@ -6,9 +6,9 @@ import requests
 from fastapi import APIRouter, Response
 
 from app.core.config import settings
-from app.core.schemas import HealthResponse
 from app.core.logging import get_logger
 from app.core.metrics import CONTENT_TYPE_LATEST, REQUEST_COUNTER, render_metrics
+from app.core.schemas import HealthResponse
 from app.memory.postgres import get_connection
 
 router = APIRouter()
@@ -16,7 +16,8 @@ logger = get_logger(__name__)
 _TIMEOUT_SECONDS = 5
 
 
-@router.get("/health", response_model=HealthResponse)
+@router.get("/health", response_model=HealthResponse, response_model_exclude_none=True)
+@router.get("/health/live", response_model=HealthResponse, response_model_exclude_none=True)
 def health() -> dict[str, str]:
     """Basic application status."""
     return {"status": "ok", "service": "ProjectRAG"}
@@ -53,7 +54,7 @@ def _check_ollama() -> tuple[str, str | None]:
         return "failed", str(exc)
 
 
-@router.get("/health/deep", response_model=HealthResponse)
+@router.get("/health/deep", response_model=HealthResponse, response_model_exclude_none=True)
 def deep_health() -> dict[str, object]:
     """Check application dependencies without raising on failures."""
     checks = {

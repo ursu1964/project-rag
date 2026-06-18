@@ -1,14 +1,47 @@
 [
   {
+    "id": "graph_001",
+    "category": "graph",
     "question": "What does VM1 depend on?",
-    "expected_entities": ["VM1", "Database01"],
-    "expected_relationships": ["dependsOn"],
-    "expected_keywords": ["VM1", "depends", "Database01"]
+    "expected_route": "graph",
+    "expected_entities": ["VM1"],
+    "expected_relationships": ["depends_on", "requires"],
+    "description": "Simple deterministic graph query for direct dependencies"
   },
   {
+    "id": "graph_002",
+    "category": "graph",
     "question": "What breaks if Database01 fails?",
+    "expected_route": "graph",
     "expected_entities": ["Database01"],
-    "expected_relationships": ["dependsOn", "uses"],
-    "expected_keywords": ["impact", "Database01", "fails"]
+    "expected_relationships": ["depends_on", "impacts"],
+    "description": "Impact analysis via graph traversal"
+  },
+  {
+    "id": "graph_003",
+    "category": "graph",
+    "question": "What are the dependencies of the database cluster?",
+    "expected_route": "graph",
+    "expected_entities": ["database", "cluster"],
+    "expected_relationships": ["depends_on", "connects_to"],
+    "description": "Multi-entity dependency traversal"
+  },
+  {
+    "id": "graph_004",
+    "category": "graph",
+    "question": "Which services use the cache?",
+    "expected_route": "graph",
+    "expected_entities": ["cache", "service"],
+    "expected_relationships": ["uses", "depends_on"],
+    "description": "Reverse dependency query"
+  },
+  {
+    "id": "graph_005",
+    "category": "graph",
+    "question": "What is the network topology?",
+    "expected_route": "graph",
+    "expected_entities": ["network", "subnet", "security_group"],
+    "expected_relationships": ["contains", "connects_to", "allows"],
+    "description": "Complex multi-level topology query"
   }
 ]

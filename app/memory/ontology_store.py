@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from typing import Any
 
-from app.memory.memory_store import add_memory, search_memory
 from app.graph.triple_builder import sanitize_entity
+from app.memory.memory_store import add_memory, search_memory
 
 
 def store_entity_definition(entity_type: str, definition: str, metadata: dict[str, Any] | None = None) -> str:

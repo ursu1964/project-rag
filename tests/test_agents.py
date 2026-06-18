@@ -1,6 +1,14 @@
 from unittest.mock import MagicMock
 
-from app.agents import context_merger, graph_retriever, memory_agent, reasoner, router, validator, vector_retriever
+from app.agents import (
+    context_merger,
+    graph_retriever,
+    memory_agent,
+    reasoner,
+    router,
+    validator,
+    vector_retriever,
+)
 
 
 def test_router_classifies_routes():
@@ -82,9 +90,22 @@ def test_reasoner_generates_answer_from_context(monkeypatch):
 
 def test_validator_requires_evidence_and_answer():
     invalid = validator.run({"answer": "", "evidence": []})["validation"]
-    valid = validator.run({"answer": "supported", "evidence": [{"content": "supported"}]})["validation"]
+    # Provide evidence_summary so calibration can score properly
+    valid = validator.run({
+        "answer": "supported",
+        "evidence": [{"content": "supported"}],
+        "evidence_summary": {"top_score": 0.85, "total_evidence": 1, "vector_count": 1, "graph_count": 0},
+    })["validation"]
 
     assert invalid["requires_human_approval"] is True
     assert "missing_answer" in invalid["warnings"]
     assert valid["grounded"] is True
     assert valid["requires_human_approval"] is False
+
+
+def test_validator_ignores_prompt_rules_when_checking_uncertainty():
+    answer = "Direct Answer:\nVM1 depends on Database01.\n\nRules:\nIf the context is insufficient, say you do not know."
+
+    result = validator.run({"answer": answer, "evidence": [{"fact_text": "VM1 dependsOn Database01"}]})
+
+    assert result["validation"]["grounded"] is True

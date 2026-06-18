@@ -1,5 +1,4 @@
 from io import BytesIO
-from pathlib import Path
 
 import pytest
 from fastapi import UploadFile
@@ -48,3 +47,11 @@ def test_safe_write_upload_rejects_unsupported_extension(tmp_path, monkeypatch):
 
     with pytest.raises(ValueError):
         file_tools.safe_write_upload(_upload("note.pdf"), raw)
+
+
+def test_safe_write_upload_rejects_file_too_large(tmp_path, monkeypatch):
+    raw = tmp_path / "data" / "raw"
+    monkeypatch.setattr(file_tools, "_RAW_DATA_DIR", raw)
+
+    with pytest.raises(ValueError, match="size limit"):
+        file_tools.safe_write_upload(_upload("note.txt", content=b"x" * 8), raw, max_bytes=4)

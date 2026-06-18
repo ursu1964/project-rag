@@ -1,4 +1,9 @@
-from app.api.routes_memory import MemoryCreateRequest, create_memory, list_memory, search_memory_route
+from app.api.routes_memory import (
+    MemoryCreateRequest,
+    create_memory,
+    list_memory,
+    search_memory_route,
+)
 
 
 def test_list_memory(monkeypatch):

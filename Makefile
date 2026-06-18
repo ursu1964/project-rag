@@ -1,4 +1,4 @@
-.PHONY: install freeze up down logs init-db ingest api test format lint typecheck graph-test smoke-test
+.PHONY: install freeze up down logs init-db db-upgrade db-current ingest api ui test format lint typecheck graph-test smoke-test
 
 install:
 	pip install -r requirements.txt
@@ -18,11 +18,20 @@ logs:
 init-db:
 	docker exec -i projectrag-postgres psql -U projectrag -d projectrag < scripts/init_postgres.sql
 
+db-upgrade:
+	alembic upgrade head
+
+db-current:
+	alembic current
+
 ingest:
 	python -m scripts.ingest_documents
 
 api:
-	uvicorn app.main:app --reload
+	uvicorn app.main:app --reload --host $${APP_HOST:-127.0.0.1} --port $${APP_PORT:-8000}
+
+ui:
+	streamlit run ui/streamlit_app.py
 
 test:
 	pytest -v

@@ -26,8 +26,12 @@ class RAGState(TypedDict, total=False):
     graph_context: dict[str, Any]
     merged_context: dict[str, Any]
     compressed_context: dict[str, Any]
+    evidence: list[dict[str, Any]]
+    evidence_summary: dict[str, Any]
     answer: str
     validation: dict[str, Any]
+    metrics: dict[str, Any]
+    workflow_id: str
 
 
 def build_workflow():

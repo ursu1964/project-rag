@@ -2,6 +2,13 @@
 
 from __future__ import annotations
 
+from typing import Any
+
+CONTENT_TYPE_LATEST: str
+Counter: Any
+Histogram: Any
+generate_latest: Any
+
 try:
     from prometheus_client import CONTENT_TYPE_LATEST, Counter, Histogram, generate_latest
 except ImportError:  # pragma: no cover - optional dependency fallback
@@ -37,10 +44,19 @@ def _histogram(name: str, description: str, labelnames: tuple[str, ...] = ()):  
 REQUEST_COUNTER = _counter("projectrag_requests_total", "Total HTTP requests", ("endpoint",))
 QUERY_COUNTER = _counter("projectrag_queries_total", "Total RAG queries")
 INGESTION_COUNTER = _counter("projectrag_ingestions_total", "Total ingestion runs")
+INGESTION_FAILURE_COUNTER = _counter("projectrag_ingestion_failures_total", "Total ingestion failures")
+PII_SCAN_COUNTER = _counter("projectrag_pii_chunks_sanitised_total", "Total chunks with PII sanitised before embedding")
+RETRIEVAL_CACHE_COUNTER = _counter(
+    "projectrag_retrieval_cache_total",
+    "Retrieval cache outcomes",
+    ("endpoint", "result"),
+)
 WORKFLOW_DURATION = _histogram("projectrag_workflow_duration_ms", "Workflow duration in milliseconds")
 VECTOR_RETRIEVAL_DURATION = _histogram("projectrag_vector_retrieval_ms", "Vector retrieval duration in milliseconds")
 GRAPH_RETRIEVAL_DURATION = _histogram("projectrag_graph_retrieval_ms", "Graph retrieval duration in milliseconds")
+HYBRID_RETRIEVAL_DURATION = _histogram("projectrag_hybrid_retrieval_ms", "Hybrid retrieval duration in milliseconds")
 LLM_LATENCY = _histogram("projectrag_llm_latency_ms", "LLM generation latency in milliseconds")
+VALIDATION_CONFIDENCE = _histogram("projectrag_validation_confidence", "RAG answer validation confidence scores")
 
 
 def metrics_enabled() -> bool:
@@ -61,5 +77,11 @@ def observe_query_metrics(metrics: dict) -> None:
         VECTOR_RETRIEVAL_DURATION.observe(metrics["vector_retrieval_ms"])
     if "graph_retrieval_ms" in metrics:
         GRAPH_RETRIEVAL_DURATION.observe(metrics["graph_retrieval_ms"])
+    if "hybrid_retrieval_ms" in metrics:
+        HYBRID_RETRIEVAL_DURATION.observe(metrics["hybrid_retrieval_ms"])
     if "llm_generation_ms" in metrics:
         LLM_LATENCY.observe(metrics["llm_generation_ms"])
+
+
+def observe_validation_confidence(confidence: float) -> None:
+    VALIDATION_CONFIDENCE.observe(max(0.0, min(1.0, float(confidence))))

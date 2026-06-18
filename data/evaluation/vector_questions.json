@@ -1,14 +1,42 @@
 [
   {
-    "question": "Summarize the topology document.",
-    "expected_entities": [],
-    "expected_relationships": [],
-    "expected_keywords": ["topology", "summary", "document"]
+    "id": "vector_001",
+    "category": "vector",
+    "question": "What are the system requirements for the application?",
+    "expected_route": "vector",
+    "expected_topics": ["requirements", "specifications", "system"],
+    "description": "Semantic search for system requirements"
   },
   {
-    "question": "What information is available about the application?",
-    "expected_entities": ["ApplicationA"],
-    "expected_relationships": [],
-    "expected_keywords": ["application", "information"]
+    "id": "vector_002",
+    "category": "vector",
+    "question": "How do I configure monitoring and logging?",
+    "expected_route": "vector",
+    "expected_topics": ["monitoring", "logging", "configuration"],
+    "description": "Multi-topic document retrieval"
+  },
+  {
+    "id": "vector_003",
+    "category": "vector",
+    "question": "What security best practices should I follow?",
+    "expected_route": "vector",
+    "expected_topics": ["security", "best_practices", "compliance"],
+    "description": "Security-focused semantic search"
+  },
+  {
+    "id": "vector_004",
+    "category": "vector",
+    "question": "Summarize the topology document.",
+    "expected_route": "vector",
+    "expected_topics": ["topology", "summary", "architecture"],
+    "description": "Document summarization via semantic search"
+  },
+  {
+    "id": "vector_005",
+    "category": "vector",
+    "question": "What information is available about ApplicationA?",
+    "expected_route": "vector",
+    "expected_topics": ["application", "ApplicationA", "configuration"],
+    "description": "Entity-specific information retrieval"
   }
 ]

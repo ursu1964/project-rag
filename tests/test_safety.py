@@ -1,5 +1,9 @@
 from app.agents.validator import run as validate
-from app.tools.safety import block_execution_by_default, classify_question_risk, require_approval_for_action
+from app.tools.safety import (
+    block_execution_by_default,
+    classify_question_risk,
+    require_approval_for_action,
+)
 
 
 def test_classify_question_risk_high():

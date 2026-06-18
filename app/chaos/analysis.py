@@ -4,7 +4,12 @@ from __future__ import annotations
 
 from typing import Iterable
 
-from app.chaos.metrics import Edge, calculate_complexity_score, calculate_entropy, calculate_instability
+from app.chaos.metrics import (
+    Edge,
+    calculate_complexity_score,
+    calculate_entropy,
+    calculate_instability,
+)
 
 
 def analyze_topology(edges: Iterable[Edge]) -> dict[str, float]:

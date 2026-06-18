@@ -1,14 +1,47 @@
 [
   {
+    "id": "hybrid_001",
+    "category": "hybrid",
     "question": "Explain how ApplicationA is connected to Database01.",
-    "expected_entities": ["ApplicationA", "VM1", "Database01"],
-    "expected_relationships": ["runsOn", "dependsOn"],
-    "expected_keywords": ["ApplicationA", "connected", "Database01"]
+    "expected_route": "hybrid",
+    "graph_component": "identify ApplicationA and Database01 relationship",
+    "vector_component": "find configuration and connection details",
+    "description": "Combines topology with configuration"
   },
   {
+    "id": "hybrid_002",
+    "category": "hybrid",
     "question": "Which services use API01 and what dependencies are involved?",
-    "expected_entities": ["API01", "Database01"],
-    "expected_relationships": ["uses", "calls", "dependsOn"],
-    "expected_keywords": ["services", "API01", "dependencies"]
+    "expected_route": "hybrid",
+    "graph_component": "identify services that depend on API01",
+    "vector_component": "find API specifications and dependency details",
+    "description": "Combines dependency graph with specs"
+  },
+  {
+    "id": "hybrid_003",
+    "category": "hybrid",
+    "question": "What would be the impact of database failure on the system?",
+    "expected_route": "hybrid",
+    "graph_component": "identify impact chain from database",
+    "vector_component": "find recovery procedures and SLAs",
+    "description": "Combines impact analysis with remediation"
+  },
+  {
+    "id": "hybrid_004",
+    "category": "hybrid",
+    "question": "What is the deployment topology and what are the operational requirements?",
+    "expected_route": "hybrid",
+    "graph_component": "visualize infrastructure topology",
+    "vector_component": "retrieve operational procedures and SLAs",
+    "description": "Combines infrastructure with operations"
+  },
+  {
+    "id": "hybrid_005",
+    "category": "hybrid",
+    "question": "Identify the critical path and explain failure scenarios",
+    "expected_route": "hybrid",
+    "graph_component": "identify dependency chains and single points of failure",
+    "vector_component": "retrieve failure scenarios and recovery procedures",
+    "description": "Combines critical path analysis with disaster recovery"
   }
 ]

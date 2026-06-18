@@ -1,5 +1,10 @@
 from app.agents.context_compressor import run as compress
-from app.rag.scoring import score_graph_result, score_memory_result, score_vector_result, weighted_score
+from app.rag.scoring import (
+    score_graph_result,
+    score_memory_result,
+    score_vector_result,
+    weighted_score,
+)
 from app.workflows.rag_workflow import build_workflow
 
 

@@ -30,3 +30,8 @@ disallow_untyped_defs = false
 warn_unused_ignores = true
 warn_redundant_casts = true
 no_strict_optional = true
+
+[tool.pytest.ini_options]
+markers = [
+  "external_dependency: tests that require live Docker/PostgreSQL/GraphDB/Ollama services",
+]

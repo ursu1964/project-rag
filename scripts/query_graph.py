@@ -5,7 +5,6 @@ from pprint import pprint
 
 from app.graph.graphdb_client import sparql_query
 
-
 DEFAULT_QUERY = """
 
 from pathlib import Path

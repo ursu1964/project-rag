@@ -52,4 +52,4 @@ def test_list_recent_experience_runs(monkeypatch):
     fetch_all = MagicMock(return_value=[])
     monkeypatch.setattr(repo, "fetch_all", fetch_all)
     assert repo.list_recent_experience_runs(3) == []
-    assert fetch_all.call_args.args[1] == (3,)
+    assert fetch_all.call_args.args[1] == ("local", 3)

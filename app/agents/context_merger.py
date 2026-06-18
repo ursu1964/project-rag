@@ -6,7 +6,12 @@ import json
 from typing import Any
 
 from app.rag.reranker import rerank_context
-from app.rag.scoring import score_graph_result, score_memory_result, score_vector_result, weighted_score
+from app.rag.scoring import (
+    score_graph_result,
+    score_memory_result,
+    score_vector_result,
+    weighted_score,
+)
 
 _DEFAULT_TOP_EVIDENCE = 8
 

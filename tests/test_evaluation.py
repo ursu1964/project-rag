@@ -1,10 +1,10 @@
 import json
 from unittest.mock import MagicMock
 
+import app.evaluation.evaluation_runner as evaluation_runner
 from app.evaluation.datasets import load_jsonl_dataset, sample_dataset
 from app.evaluation.evaluation_runner import run_evaluation, store_evaluation_result
 from app.evaluation.metrics import evaluate_answer
-import app.evaluation.evaluation_runner as evaluation_runner
 
 
 def test_evaluate_answer_metrics():
