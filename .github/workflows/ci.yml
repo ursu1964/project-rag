@@ -39,3 +39,59 @@ jobs:
 
       - name: Validate docker-compose.yml
         run: docker compose config
+
+  retry-backoff-smoke:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    continue-on-error: ${{ matrix.experimental }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - python-version: "3.12"
+            experimental: false
+          - python-version: "3.13"
+            experimental: true
+
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_DB: projectrag
+          POSTGRES_USER: projectrag
+          POSTGRES_PASSWORD: projectrag-ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U projectrag -d projectrag"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      POSTGRES_HOST: 127.0.0.1
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: projectrag
+      POSTGRES_USER: projectrag
+      POSTGRES_PASSWORD: projectrag-ci
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install requirements
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Apply migrations
+        run: alembic upgrade head
+
+      - name: Retry backoff smoke verification
+        run: python -m scripts.verify_retry_backoff

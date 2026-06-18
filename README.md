@@ -2,6 +2,8 @@
 
 [![CI](https://github.com/ursu1964/project-rag/actions/workflows/ci.yml/badge.svg)](https://github.com/ursu1964/project-rag/actions/workflows/ci.yml)
 
+> **PR Smoke Check**: Pull requests run `retry-backoff-smoke` (Python 3.12 blocking, 3.13 informational). See [operations guide](PROJECTRAG_QUICK_OPERATIONS_GUIDE.md#92-pr-smoke-ci-lane-retry-backoff) for details.
+
 ProjectRAG is a local-first GraphRAG platform for ingesting project documents, extracting infrastructure/application relationships, and answering grounded questions using local retrieval, graph context, and local LLM inference.
 
 The MVP is designed for private engineering knowledge bases, architecture notes, topology files, runbooks, and internal documentation where data should stay on the developer machine or controlled local infrastructure.
@@ -151,14 +153,16 @@ Ingestion will:
 
 ## Start the API
 
+Use port `8001` by default unless you intentionally free `8000` for ProjectRAG.
+
 ```bash
-uvicorn app.main:app --reload
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8001
 ```
 
 ## Health Check
 
 ```bash
-curl http://localhost:8000/health
+curl http://localhost:8001/health
 ```
 
 Expected response:
@@ -170,7 +174,7 @@ Expected response:
 ## Example Query
 
 ```bash
-curl -X POST http://localhost:8000/query \
+curl -X POST http://localhost:8001/query \
   -H "Content-Type: application/json" \
   -d '{"question": "What does VM1 depend on?"}'
 ```

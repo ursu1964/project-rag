@@ -1,4 +1,4 @@
-.PHONY: install freeze up down logs init-db db-upgrade db-current ingest api ui test format lint typecheck graph-test smoke-test
+.PHONY: install freeze up down logs init-db db-upgrade db-current ingest api ui dashboards-all test format lint typecheck graph-test smoke-test verify-retry-backoff
 
 install:
 	pip install -r requirements.txt
@@ -28,10 +28,13 @@ ingest:
 	python -m scripts.ingest_documents
 
 api:
-	uvicorn app.main:app --reload --host $${APP_HOST:-127.0.0.1} --port $${APP_PORT:-8000}
+	uvicorn app.main:app --reload --host $${APP_HOST:-127.0.0.1} --port $${APP_PORT:-8001}
 
 ui:
 	streamlit run ui/streamlit_app.py
+
+dashboards-all:
+	python scripts/launch_dashboards.py --auto-port --auto-ui-port --with-observability
 
 test:
 	pytest -v
@@ -51,4 +54,7 @@ graph-test:
 	python -m scripts.query_graph
 
 smoke-test: up init-db ingest test
-	curl http://localhost:8000/health || true
+	curl http://localhost:8001/health || true
+
+verify-retry-backoff:
+	python -m scripts.verify_retry_backoff
