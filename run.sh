@@ -72,7 +72,7 @@ open_url "Qdrant" "http://localhost:6333/dashboard"
 echo "OPEN GraphDB -> http://localhost:7200"
 xdg-open "http://localhost:7200" >/dev/null 2>&1 || true
 
-echo "OPEN Alertmanager -> http://localhost:19094"
+#open_url "Alertmanager" "http://localhost:19094"
 xdg-open "http://localhost:19094" >/dev/null 2>&1 || true
 
 
