@@ -86,10 +86,10 @@ export function ProtectedPage({
 }) {
   const auth = useAuth();
   if (!auth.authenticated) {
-    return <AuthErrorBanner error={new ApiError('Authentication required', 401)} />;
+    return <AuthErrorBanner error={new ApiError(401, 'Authentication required')} />;
   }
   if (!auth.canAccess(roles)) {
-    return <AuthErrorBanner error={new ApiError('Forbidden', 403)} />;
+    return <AuthErrorBanner error={new ApiError(403, 'Forbidden')} />;
   }
   return <>{children}</>;
 }

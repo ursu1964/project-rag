@@ -29,7 +29,7 @@ class Settings(BaseSettings):
 
     graphdb_url: str = "http://localhost:7200"
     graphdb_repository: str = "projectrag"
-    graphdb_ensure_repository_on_startup: bool = True
+    graphdb_ensure_repository_on_startup: bool = False
 
     ollama_url: str = "http://localhost:11434"
     ollama_model: str = "llama3.1:8b"

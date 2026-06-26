@@ -44,3 +44,5 @@ The next improvements should focus on production polish:
 
 ## Conclusion
 ProjectRAG is a strong technical platform for private engineering knowledge. Its main value is that it gives teams a controlled, explainable, and testable way to search and reason over their documents. With better security, observability, and UI polish, it can move from a solid MVP to a production-ready product.
+
+

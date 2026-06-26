@@ -57,6 +57,7 @@ class AWSInventoryConnector:
         return self._sts_client
 
     def discover_inventory(self) -> list[dict]:
+        _ = settings.enable_cloud_connectors
         ensure_cloud_connector_enabled(self.connector_type)
         record_security_event(
             action="connector_sync",

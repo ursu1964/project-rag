@@ -1,3 +1,4 @@
+
 """FastAPI application entrypoint."""
 
 from typing import cast
@@ -28,6 +29,8 @@ from app.core.settings_validator import validate_settings
 from app.core.telemetry import setup_telemetry
 from app.gateway.middleware import install_gateway_middleware
 from app.graph.graphdb_client import ensure_repository_ready
+from app.api import routes_topology 
+from app.api import routes_health
 
 logger = get_logger(__name__)
 _VERSION_PREFIX = "/api/v1"
@@ -108,4 +111,12 @@ def create_app() -> FastAPI:
     return app
 
 
+def create_app()->FastAPI:
+    app = FastAPI(title="ProjectRAG")
+    app.include_router(health_router)
+    app.include_router(documents_router)
+    app.include_router(query_router)
+    app.include_router(routes_topology.router)
+
+    return app
 app = create_app()

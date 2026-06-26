@@ -23,7 +23,7 @@ export default function AskPage() {
     setLoading(true);
     setError('');
     try {
-      setResult(await apiPost<QueryResult>('/query', { question }));
+      setResult(await apiPost<QueryResult>('/api/v1/query', { question }));
     } catch (err) {
       setError(authStatusMessage(err));
     } finally {

@@ -22,7 +22,7 @@ services:
       OTEL_ENABLED: ${OTEL_ENABLED:-false}
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318/v1/traces
     ports:
-      - "${APP_PORT:-8001}:8000"
+      - "${APP_PORT:-18000}:8000"
     depends_on:
       postgres:
         condition: service_healthy
@@ -47,7 +47,7 @@ services:
       dockerfile: Dockerfile
     container_name: projectrag-frontend
     environment:
-      NEXT_PUBLIC_API_BASE_URL: http://localhost:8001
+      NEXT_PUBLIC_API_BASE_URL: http://localhost:18000
       PROJECTRAG_INTERNAL_API_BASE_URL: http://api:8000
     ports:
       - "3000:3000"
@@ -158,7 +158,7 @@ services:
       - ${ALERTMANAGER_CONFIG_PATH:-./deploy/monitoring/alertmanager/alertmanager.yml}:/etc/alertmanager/alertmanager.yml:ro
       - alertmanager_data:/alertmanager
     ports:
-      - "${ALERTMANAGER_PORT:-9094}:9093"
+      - "${ALERTMANAGER_PORT:-19094}:9094"
 
   grafana:
     image: grafana/grafana:11.1.4@sha256:886b56d5534e54f69a8cfcb4b8928da8fc753178a7a3d20c3f9b04b660169805
