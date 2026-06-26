@@ -26,3 +26,4 @@ frontend/*.tsbuildinfo
 # Local alertmanager routing with real webhook/SMTP secrets
 deploy/monitoring/alertmanager/alertmanager.local.yml
 frontend/out/
+.continue/
