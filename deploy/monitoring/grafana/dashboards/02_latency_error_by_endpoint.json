@@ -1,0 +1,120 @@
+{
+  "id": null,
+  "uid": "projectrag-latency-errors",
+  "title": "ProjectRAG - Latency and Error Rate by Endpoint",
+  "schemaVersion": 39,
+  "version": 1,
+  "timezone": "browser",
+  "refresh": "15s",
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Latency p50 by path (ms)",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 0
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "histogram_quantile(0.50, sum by (le, path) (rate(projectrag_http_request_duration_ms_bucket[5m])))"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Latency p95 by path (ms)",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 8,
+        "y": 0
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "histogram_quantile(0.95, sum by (le, path) (rate(projectrag_http_request_duration_ms_bucket[5m])))"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Latency p99 by path (ms)",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 0
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "histogram_quantile(0.99, sum by (le, path) (rate(projectrag_http_request_duration_ms_bucket[5m])))"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Error rate by endpoint (%)",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "100 * sum by (path) (rate(projectrag_http_errors_total[5m])) / clamp_min(sum by (path) (rate(projectrag_http_requests_total[5m])), 0.0001)"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "title": "Request volume by endpoint (req/s)",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (path) (rate(projectrag_http_requests_total[5m]))"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,247 @@
+x-prod-security: &prod-security
+  security_opt:
+    - no-new-privileges:true
+
+x-default-resources: &default-resources
+  deploy:
+    resources:
+      reservations:
+        cpus: "0.10"
+        memory: 128M
+      limits:
+        cpus: "1.00"
+        memory: 1G
+
+services:
+  projectrag-api:
+    <<: [*prod-security, *default-resources]
+    build:
+      context: .
+    image: projectrag-api:${PROJECTRAG_IMAGE_TAG:-0.1.0}
+    container_name: projectrag-api
+    env_file:
+      - .env
+    environment:
+      APP_ENV: production
+      POSTGRES_HOST: projectrag-postgres
+      GRAPHDB_URL: http://projectrag-graphdb:7200
+      OLLAMA_URL: ${OLLAMA_URL:?OLLAMA_URL required}
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-llama3.1:8b}
+      EMBEDDING_MODEL: ${EMBEDDING_MODEL:-nomic-embed-text}
+      REDIS_URL: redis://projectrag-redis:6379/0
+      # Production auth is required; configure OIDC/JWT before startup.
+      # Optional: PROJECTRAG_OIDC_JWKS_URL.
+      PROJECTRAG_AUTH_REQUIRED: "true"
+      PROJECTRAG_ENFORCE_RBAC: "true"
+      PROJECTRAG_AUTH_MODE: ${PROJECTRAG_AUTH_MODE:-oidc}
+      PROJECTRAG_OIDC_ISSUER: ${PROJECTRAG_OIDC_ISSUER:?PROJECTRAG_OIDC_ISSUER required}
+      PROJECTRAG_OIDC_AUDIENCE: ${PROJECTRAG_OIDC_AUDIENCE:-projectrag-api}
+      PROJECTRAG_OIDC_JWKS_URL: ${PROJECTRAG_OIDC_JWKS_URL:-}
+      PROJECTRAG_API_KEY_HASH: ${PROJECTRAG_API_KEY_HASH:-}
+      # Observability — OpenTelemetry fully enabled in prod
+      OTEL_ENABLED: ${OTEL_ENABLED:-true}
+      OTEL_SERVICE_NAME: ${OTEL_SERVICE_NAME:-projectrag-api}
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-http://projectrag-otel-collector:4318/v1/traces}
+      # Rate limiting — set conservative defaults, override per deployment
+      PROJECTRAG_RATE_LIMIT_PER_MINUTE: ${PROJECTRAG_RATE_LIMIT_PER_MINUTE:-60}
+      PROJECTRAG_REQUEST_AUDIT_ENABLED: "true"
+      # Cloud connectors disabled by default; must be explicitly enabled
+      PROJECTRAG_CLOUD_CONNECTORS_ENABLED: "false"
+    ports:
+      - "${APP_PORT:-8001}:8000"
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers ${UVICORN_WORKERS:-2}
+    depends_on:
+      projectrag-postgres:
+        condition: service_healthy
+      projectrag-graphdb:
+        condition: service_healthy
+      projectrag-redis:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      default:
+        aliases:
+          - api
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health/ready', timeout=5)\"",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+  projectrag-postgres:
+    <<: [*prod-security, *default-resources]
+    image: pgvector/pgvector:pg16@sha256:131dcf7ff6a900545df8e7e092c270aa8c6db2f2c818e408cb45ec21316b74e6
+    container_name: projectrag-postgres
+    env_file:
+      - .env
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB required}
+      POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER required}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD required}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    networks:
+      default:
+        aliases:
+          - postgres
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  projectrag-redis:
+    <<: [*prod-security, *default-resources]
+    image: redis:7-alpine@sha256:6ab0b6e7381779332f97b8ca76193e45b0756f38d4c0dcda72dbb3c32061ab99
+    container_name: projectrag-redis
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  projectrag-graphdb:
+    <<: [*prod-security, *default-resources]
+    image: ontotext/graphdb:10.8.6@sha256:b5e42a181d7347afad3d0db837abeaaf6dba91c3b1a7cb41ad4d04ddefce18da
+    container_name: projectrag-graphdb
+    env_file:
+      - .env
+    volumes:
+      - graphdb_data:/opt/graphdb/home
+    restart: unless-stopped
+    networks:
+      default:
+        aliases:
+          - graphdb
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "curl -fsS http://localhost:7200/rest/repositories >/dev/null || exit 1",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
+
+  # ---------------------------------------------------------------------------
+  # Observability stack
+  # ---------------------------------------------------------------------------
+
+  projectrag-otel-collector:
+    <<: [*prod-security, *default-resources]
+    image: otel/opentelemetry-collector-contrib:0.104.0@sha256:e07e325e303e86f4a87a617491e921b579a92da6d404007394757ac910bf9587
+    container_name: projectrag-otel-collector
+    command: ["--config=/etc/otel-collector-config.yml"]
+    volumes:
+      - ./deploy/otel-collector-config.yml:/etc/otel-collector-config.yml:ro
+    restart: unless-stopped
+
+  projectrag-blackbox:
+    <<: [*prod-security, *default-resources]
+    image: prom/blackbox-exporter:v0.25.0@sha256:b04a9fef4fa086a02fc7fcd8dcdbc4b7b35cc30cdee860fdc6a19dd8b208d63e
+    container_name: projectrag-blackbox
+    command: ["--config.file=/etc/blackbox/blackbox.yml"]
+    networks:
+      default:
+        aliases:
+          - blackbox
+    volumes:
+      - ./deploy/monitoring/blackbox/blackbox.yml:/etc/blackbox/blackbox.yml:ro
+    restart: unless-stopped
+
+  projectrag-prometheus:
+    <<: [*prod-security, *default-resources]
+    image: prom/prometheus:v2.54.1@sha256:f6639335d34a77d9d9db382b92eeb7fc00934be8eae81dbc03b31cfe90411a94
+    container_name: projectrag-prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--web.enable-lifecycle"
+    volumes:
+      - ./deploy/monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./deploy/monitoring/prometheus/alerts.yml:/etc/prometheus/alerts.yml:ro
+      - prometheus_data:/prometheus
+    restart: unless-stopped
+    networks:
+      default:
+        aliases:
+          - prometheus
+    depends_on:
+      - projectrag-api
+      - projectrag-blackbox
+      - projectrag-alertmanager
+
+  projectrag-alertmanager:
+    <<: [*prod-security, *default-resources]
+    image: prom/alertmanager:v0.27.0@sha256:e13b6ed5cb929eeaee733479dce55e10eb3bc2e9c4586c705a4e8da41e5eacf5
+    container_name: projectrag-alertmanager
+    command:
+      - "--config.file=/etc/alertmanager/alertmanager.yml"
+      - "--storage.path=/alertmanager"
+    volumes:
+      - ${ALERTMANAGER_CONFIG_PATH:-./deploy/monitoring/alertmanager/alertmanager.yml}:/etc/alertmanager/alertmanager.yml:ro
+      - alertmanager_data:/alertmanager
+    restart: unless-stopped
+
+  projectrag-grafana:
+    <<: [*prod-security, *default-resources]
+    image: grafana/grafana:11.1.4@sha256:886b56d5534e54f69a8cfcb4b8928da8fc753178a7a3d20c3f9b04b660169805
+    container_name: projectrag-grafana
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:?GRAFANA_ADMIN_USER required}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?GRAFANA_ADMIN_PASSWORD required}
+      GF_USERS_DEFAULT_THEME: light
+      GF_SECURITY_DISABLE_GRAVATAR: "true"
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+    volumes:
+      - ./deploy/monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./deploy/monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana_data:/var/lib/grafana
+    ports:
+      - "${GRAFANA_PORT:-3001}:3000"
+    restart: unless-stopped
+    depends_on:
+      - projectrag-prometheus
+
+  projectrag-frontend:
+    <<: [*prod-security, *default-resources]
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    image: projectrag-frontend:${PROJECTRAG_IMAGE_TAG:-0.1.0}
+    container_name: projectrag-frontend
+    environment:
+      NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://localhost:${APP_PORT:-8001}}
+      PROJECTRAG_INTERNAL_API_BASE_URL: http://api:8000
+    ports:
+      - "${FRONTEND_PORT:-3000}:3000"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    depends_on:
+      projectrag-api:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
+  redis_data:
+  graphdb_data:
+  prometheus_data:
+  grafana_data:
+  alertmanager_data:

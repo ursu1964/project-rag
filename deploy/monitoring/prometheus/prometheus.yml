@@ -1,0 +1,59 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ["alertmanager:9093", "projectrag-alertmanager:9093"]
+
+rule_files:
+  - /etc/prometheus/alerts.yml
+
+scrape_configs:
+  # Dev compose: service name "api"; prod compose: service name "projectrag-api"
+  - job_name: projectrag_api
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["api:8000", "projectrag-api:8000"]
+
+  - job_name: projectrag_otel_collector
+    static_configs:
+      - targets: ["otel-collector:8889", "projectrag-otel-collector:8889"]
+
+  - job_name: blackbox_http
+    metrics_path: /probe
+    params:
+      module: [http_2xx]
+    static_configs:
+      - targets:
+          - http://api:8000/health/live
+          - http://api:8000/health/deep
+          - http://projectrag-api:8000/health/live
+          - http://projectrag-api:8000/health/deep
+          - http://graphdb:7200/rest/repositories
+          - http://projectrag-graphdb:7200/rest/repositories
+          - http://host.docker.internal:11434/api/tags
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: blackbox:9115
+
+  - job_name: blackbox_tcp
+    metrics_path: /probe
+    params:
+      module: [tcp_connect]
+    static_configs:
+      - targets:
+          - postgres:5432
+          - projectrag-postgres:5432
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: blackbox:9115

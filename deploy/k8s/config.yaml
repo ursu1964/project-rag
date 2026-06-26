@@ -1,0 +1,35 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: projectrag-config
+data:
+  APP_ENV: production
+  POSTGRES_PORT: "5432"
+  QDRANT_COLLECTION: projectrag_chunks
+  PROJECTRAG_AUTH_REQUIRED: "true"
+  PROJECTRAG_ENFORCE_RBAC: "true"
+  PROJECTRAG_AUTH_MODE: oidc
+  PROJECTRAG_CLOUD_CONNECTORS_ENABLED: "false"
+  PROJECTRAG_REQUEST_AUDIT_ENABLED: "true"
+  OTEL_ENABLED: "true"
+  OTEL_SERVICE_NAME: projectrag-api
+  OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318/v1/traces
+---
+# Template only: replace all values at deploy time from a real secret store.
+apiVersion: v1
+kind: Secret
+metadata:
+  name: projectrag-secrets
+type: Opaque
+stringData:
+  POSTGRES_HOST: replace-me
+  POSTGRES_DB: projectrag
+  POSTGRES_USER: projectrag
+  POSTGRES_PASSWORD: replace-me
+  REDIS_URL: redis://replace-me:6379/0
+  QDRANT_URL: http://replace-me:6333
+  GRAPHDB_URL: http://replace-me:7200
+  OLLAMA_URL: http://replace-me:11434
+  PROJECTRAG_OIDC_ISSUER: https://replace-me.example.com
+  PROJECTRAG_OIDC_AUDIENCE: projectrag-api
+  PROJECTRAG_OIDC_JWKS_URL: ""

@@ -1,0 +1,28 @@
+.venv/
+.env
+.env.*
+!.env.example
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.vscode/
+data/raw/
+!data/raw/*.example
+data/processed/
+data/private/
+data/exports/
+*.log
+backups/
+*.dump
+*.backup
+
+# Node / Frontend
+node_modules/
+frontend/node_modules/
+frontend/.next/
+frontend/*.tsbuildinfo
+
+# Local alertmanager routing with real webhook/SMTP secrets
+deploy/monitoring/alertmanager/alertmanager.local.yml
+frontend/out/
