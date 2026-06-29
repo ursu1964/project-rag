@@ -19,8 +19,6 @@ from starlette.responses import JSONResponse
 
 from app.core.settings_validator import validate_settings
 from app.gateway import middleware
-from app.security.identity import Identity, resolve_request_identity, IdentityResolutionError
-from app.security.rbac import has_permission
 
 
 # ---------------------------------------------------------------------------
@@ -183,7 +181,6 @@ class TestCloudConnectorSafety:
     def test_aws_inventory_raises_when_connectors_disabled(self, monkeypatch):
         """AWS discover_inventory must raise RuntimeError when cloud connectors are off."""
         from app.connectors.aws import inventory as aws_inv
-        from app.core import config as cfg
 
         monkeypatch.setattr(aws_inv.settings, "enable_cloud_connectors", False)
         with pytest.raises(RuntimeError, match="AWS connector is disabled"):
@@ -207,17 +204,12 @@ class TestCloudConnectorSafety:
 
     def test_connector_route_returns_dormant_when_flag_off(self, monkeypatch):
         """The connector sync route must return 'skipped' when cloud connectors are dormant."""
-        from app.api.routes_connectors import router as connectors_router
+        from app.api.routes_connectors import ConnectorSyncRequest, sync_connector
         from app.core.config import settings as app_settings
 
         monkeypatch.setattr(app_settings, "enable_cloud_connectors", False)
 
-        app = FastAPI()
-        app.include_router(connectors_router)
-        client = TestClient(app)
-        resp = client.post("/connectors/aws/sync", json={"dry_run": True})
-        assert resp.status_code == 200
-        body = resp.json()
+        body = sync_connector("aws", ConnectorSyncRequest(dry_run=True))
         assert body["status"] == "skipped"
         assert body["reason"] == "cloud_connector_dormant"
 

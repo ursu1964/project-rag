@@ -14,17 +14,14 @@ Tests cover:
 
 from __future__ import annotations
 
-import json
-import time
 from datetime import datetime, timedelta, timezone
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import MagicMock, patch
 
 import jwt as pyjwt
 import pytest
 
 from app.security.identity import (
     IdentityResolutionError,
-    Identity,
     resolve_request_identity,
     _verify_oidc_claims,
 )
@@ -66,9 +63,6 @@ def rsa_key_pair():
 @pytest.fixture
 def test_jwks(rsa_key_pair):
     """Create a valid JWKS response with test key."""
-    from jwt import PyJWKClient
-    from cryptography.hazmat.primitives import serialization
-    from cryptography.hazmat.backends import default_backend
 
     public_key = rsa_key_pair["key"].public_key()
     public_numbers = public_key.public_numbers()

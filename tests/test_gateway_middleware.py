@@ -23,6 +23,16 @@ def test_gateway_public_paths():
     assert middleware._is_public_path("/documents") is False
 
 
+def test_gateway_nonlocal_public_paths_exclude_docs_and_metrics(monkeypatch):
+    monkeypatch.setattr(settings, "app_env", "production")
+
+    assert middleware._is_public_path("/health/ready") is True
+    assert middleware._is_public_path("/api/v1/health/live") is True
+    assert middleware._is_public_path("/metrics") is False
+    assert middleware._is_public_path("/docs") is False
+    assert middleware._is_public_path("/openapi.json") is False
+
+
 def test_gateway_extracts_api_key_from_custom_header():
     request = _request(headers={"x-projectrag-api-key": "secret"})
 
@@ -115,7 +125,9 @@ def test_gateway_rbac_uses_request_state_identity():
 def test_gateway_rate_limit_uses_redis_counter(monkeypatch):
     monkeypatch.setattr(settings, "rate_limit_per_minute", 2)
     counts = iter([1, 3])
-    monkeypatch.setattr(middleware, "increment_window_counter", lambda key, ttl_seconds: next(counts))
+    monkeypatch.setattr(
+        middleware, "increment_window_counter", lambda key, ttl_seconds: next(counts)
+    )
     request = _request()
 
     assert middleware._rate_limit_exceeded(request, 1000.0) is False
@@ -128,8 +140,14 @@ def test_gateway_permission_map_includes_platform_routes():
     assert middleware._required_permission("GET", "/connectors") == "read"
     assert middleware._required_permission("GET", "/connectors/aws") == "read"
     assert middleware._required_permission("GET", "/audit/events") == "admin"
-    assert middleware._required_permission("GET", "/operations/jobs/retry-queue") == "admin"
-    assert middleware._required_permission("POST", "/workflows/workflow-1/resume") == "admin"
+    assert (
+        middleware._required_permission("GET", "/operations/jobs/retry-queue")
+        == "admin"
+    )
+    assert (
+        middleware._required_permission("POST", "/workflows/workflow-1/resume")
+        == "admin"
+    )
     assert middleware._required_permission("GET", "/memory/search") == "read"
     assert middleware._required_permission("GET", "/evaluation/report") == "read"
     assert middleware._required_permission("GET", "/sources/catalog") == "read"
@@ -160,7 +178,11 @@ def test_gateway_auth_required_oidc_denies_without_identity(monkeypatch):
     monkeypatch.setattr(settings, "api_key", "")
     monkeypatch.setattr(settings, "enforce_rbac", False)
     recorded = []
-    monkeypatch.setattr(middleware, "record_security_event", lambda **kwargs: recorded.append(kwargs) or kwargs)
+    monkeypatch.setattr(
+        middleware,
+        "record_security_event",
+        lambda **kwargs: recorded.append(kwargs) or kwargs,
+    )
 
     client = _build_gateway_test_client()
     response = client.get("/documents/ping")
@@ -193,6 +215,42 @@ def test_gateway_local_mode_allows_trusted_header_and_sets_tenant(monkeypatch):
     assert response.status_code == 200
     assert response.json()["tenant_id"] == "tenant-77"
     assert response.headers["x-tenant-id"] == "tenant-77"
+
+
+def test_gateway_nonlocal_local_auth_ignores_spoofed_role_header(monkeypatch):
+    monkeypatch.setenv("PROJECTRAG_LOCAL_USER", "service-account")
+    monkeypatch.setenv("PROJECTRAG_LOCAL_ROLE", "viewer")
+    monkeypatch.setenv("PROJECTRAG_LOCAL_TENANT", "prod-tenant")
+    monkeypatch.setattr(settings, "app_env", "production")
+    monkeypatch.setattr(settings, "auth_required", True)
+    monkeypatch.setattr(settings, "auth_mode", "local")
+    monkeypatch.setattr(settings, "api_key", "secret-prod-key")
+    monkeypatch.setattr(settings, "api_key_hash", "")
+    monkeypatch.setattr(settings, "enforce_rbac", True)
+    monkeypatch.setattr(settings, "request_audit_enabled", False)
+    monkeypatch.setattr(settings, "rate_limit_per_minute", 0)
+
+    app = FastAPI()
+    middleware.install_gateway_middleware(app)
+
+    @app.post("/ingest")
+    async def ingest(request: Request):
+        return {"ok": True}
+
+    client = TestClient(app)
+    response = client.post(
+        "/ingest",
+        json={},
+        headers={
+            "x-projectrag-api-key": "secret-prod-key",
+            "x-projectrag-user": "attacker",
+            "x-projectrag-role": "admin",
+            "x-projectrag-tenant-id": "attacker-tenant",
+        },
+    )
+
+    assert response.status_code == 403
+    assert response.json()["policy_decision"]["role"] == "viewer"
 
 
 def test_gateway_treats_versioned_health_as_public(monkeypatch):

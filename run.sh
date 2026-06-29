@@ -27,55 +27,62 @@ wait_url() {
   return 1
 }
 
-open_url() {
+print_url() {
   local name="$1"
   local url="$2"
-
-  if curl -fsS --max-time 5 "$url" >/dev/null 2>&1; then
-    echo -e "${GREEN}OPEN${NC} $name -> $url"
-    xdg-open "$url" >/dev/null 2>&1 || echo -e "${YELLOW}WARN${NC} Could not auto-open $url"
-  else
-    echo -e "${RED}FAIL${NC} $name -> $url"
-  fi
+  echo -e "${GREEN}READY${NC} $name -> $url"
 }
 
 echo "========================================"
 echo "Starting ProjectRAG"
 echo "========================================"
 
-docker compose down --remove-orphans
+if [[ "${1:-}" == "--reset" ]]; then
+  echo "Reset requested: stopping/removing containers before startup..."
+  docker compose down --remove-orphans
+elif [[ "${1:-}" != "" ]]; then
+  echo -e "${RED}FAIL${NC} Unknown option: ${1:-}"
+  echo "Usage: ./run.sh [--reset]"
+  exit 2
+fi
+
 docker compose up -d --build
 
 wait_url "API" "http://localhost:18000/health/live" 60
-wait_url "Frontend" "http://localhost:3000/admin" 60
+wait_url "Frontend" "http://localhost:3000/dashboards" 60
 
 echo ""
 echo "Container status:"
 docker compose ps
 
 echo ""
-echo "Opening verified dashboards..."
+echo ""
+echo "Dashboards are running. Open them manually from:"
 echo "========================================"
 
-open_url "Admin Dashboard" "http://localhost:3000/admin"
-open_url "Ask Dashboard" "http://localhost:3000/ask"
-open_url "Documents Dashboard" "http://localhost:3000/documents"
-open_url "Audit Dashboard" "http://localhost:3000/audit"
-open_url "Topology Dashboard" "http://localhost:3000/topology"
-open_url "Evaluation Dashboard" "http://localhost:3000/evaluation"
+print_url "Dashboard Launcher" "http://localhost:3000/dashboards"
+print_url "Admin Dashboard" "http://localhost:3000/admin"
+print_url "Ask Dashboard" "http://localhost:3000/ask"
+print_url "Documents Dashboard" "http://localhost:3000/documents"
+print_url "Models Dashboard" "http://localhost:3000/models"
+print_url "Memory Dashboard" "http://localhost:3000/memory"
+print_url "Workflows Dashboard" "http://localhost:3000/workflows"
+print_url "Audit Dashboard" "http://localhost:3000/audit"
+print_url "Topology Dashboard" "http://localhost:3000/topology"
+print_url "Evaluation Dashboard" "http://localhost:3000/evaluation"
 
-open_url "API Health" "http://localhost:18000/health/live"
-open_url "API Docs" "http://localhost:18000/docs"
-open_url "Grafana" "http://localhost:3001"
-open_url "Prometheus" "http://localhost:9091"
-open_url "Qdrant" "http://localhost:6333/dashboard"
-echo "OPEN GraphDB -> http://localhost:7200"
-xdg-open "http://localhost:7200" >/dev/null 2>&1 || true
-
-#open_url "Alertmanager" "http://localhost:19094"
-xdg-open "http://localhost:19094" >/dev/null 2>&1 || true
-
-
+print_url "Grafana" "http://localhost:3001"
+echo "Grafana login: use GRAFANA_ADMIN_USER/GRAFANA_ADMIN_PASSWORD from .env (defaults admin/admin if unset)."
+echo "If Grafana login fails because an old volume kept the password: ./scripts/reset_grafana_admin.sh"
+print_url "Grafana PostgreSQL Data" "http://localhost:3001/d/projectrag-postgres-data/projectrag-postgresql-data-and-ingestion"
+print_url "Grafana Health" "http://localhost:3001/d/projectrag-health/projectrag-health-and-availability"
+print_url "Grafana Latency" "http://localhost:3001/d/projectrag-latency-errors/projectrag-latency-and-error-rate-by-endpoint"
+print_url "Grafana Workflows" "http://localhost:3001/d/projectrag-workflow-agents/projectrag-workflow-and-agent-performance"
+print_url "API Docs" "http://localhost:18000/docs"
+print_url "Prometheus" "http://localhost:9091"
+print_url "Qdrant" "http://localhost:6333/dashboard"
+print_url "GraphDB" "http://localhost:7200"
+print_url "Alertmanager" "http://localhost:19094"
 echo ""
 echo "========================================"
 echo -e "${GREEN}ProjectRAG startup verification finished.${NC}"

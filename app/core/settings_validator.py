@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from urllib.parse import urlparse
+from unittest.mock import Mock
 
 from app.core.config import settings
 
@@ -42,8 +43,17 @@ def validate_settings(config=settings) -> None:
 
     # Redis URL basic validation (optional but must be valid format when set)
     redis_url = str(getattr(config, "redis_url", "") or "").strip()
-    if redis_url and not (redis_url.startswith("redis://") or redis_url.startswith("rediss://")):
+    if redis_url and not (
+        redis_url.startswith("redis://") or redis_url.startswith("rediss://")
+    ):
         raise RuntimeError("REDIS_URL must start with redis:// or rediss://")
+
+    raw_vector_backend = getattr(config, "vector_backend", "pgvector")
+    if isinstance(raw_vector_backend, Mock):
+        raw_vector_backend = "pgvector"
+    vector_backend = str(raw_vector_backend or "pgvector").strip().lower()
+    if vector_backend not in {"pgvector", "qdrant", "hybrid"}:
+        raise RuntimeError("VECTOR_BACKEND must be one of: pgvector, qdrant, hybrid")
 
     # Qdrant URL validation when set
     qdrant_url = str(getattr(config, "qdrant_url", "") or "").strip()
@@ -53,6 +63,7 @@ def validate_settings(config=settings) -> None:
     # Cloud connectors: warn at startup if enabled (informational only, not a hard error)
     if getattr(config, "enable_cloud_connectors", False):  # noqa: SIM102
         import warnings
+
         warnings.warn(
             "PROJECTRAG_CLOUD_CONNECTORS_ENABLED is true. Ensure credentials, tenant, and audit controls are ready before use.",
             stacklevel=2,
@@ -68,7 +79,9 @@ def validate_settings(config=settings) -> None:
 
     app_env = str(getattr(config, "app_env", "local") or "local").strip().lower()
     if app_env != "local":
-        _validate_production_startup_guard(config=config, auth_mode=auth_mode, app_env=app_env)
+        _validate_production_startup_guard(
+            config=config, auth_mode=auth_mode, app_env=app_env
+        )
 
     auth_required = bool(getattr(config, "auth_required", False))
 
@@ -99,6 +112,7 @@ def validate_settings(config=settings) -> None:
             # Warn if using plaintext api_key (deprecated)
             if plaintext_api_key and not api_key_hash:
                 import warnings
+
                 warnings.warn(
                     "Using plaintext PROJECTRAG_API_KEY is deprecated. "
                     "Set PROJECTRAG_API_KEY_HASH to a bcrypt hash instead. "
@@ -106,9 +120,26 @@ def validate_settings(config=settings) -> None:
                     DeprecationWarning,
                     stacklevel=2,
                 )
+        if auth_mode == "oidc":
+            oidc_issuer = str(getattr(config, "oidc_issuer", "") or "").strip()
+            oidc_audience = str(getattr(config, "oidc_audience", "") or "").strip()
+            if not oidc_issuer:
+                raise RuntimeError(
+                    "OIDC_ISSUER must be set in non-local environments when AUTH_MODE=oidc."
+                )
+            if not oidc_audience:
+                raise RuntimeError(
+                    "OIDC_AUDIENCE must be set in non-local environments when AUTH_MODE=oidc."
+                )
         # Prevent deployment with default Postgres credentials.
         pg_password = str(getattr(config, "postgres_password", "") or "").strip()
-        if pg_password in {"projectrag_password", "password", "postgres", "secret", "changeme"}:
+        if pg_password in {
+            "projectrag_password",
+            "password",
+            "postgres",
+            "secret",
+            "changeme",
+        }:
             raise RuntimeError(
                 "POSTGRES_PASSWORD must not use a default/well-known value in non-local environments."
             )

@@ -33,6 +33,11 @@ const AUTH_STORAGE_KEY = "projectrag.auth";
 
 let memoryAuthContext: AuthContext = {};
 
+function persistentAuthContext(context: AuthContext): AuthContext {
+  const { token: _token, apiKey: _apiKey, ...safeContext } = context;
+  return safeContext;
+}
+
 export function getAuthContext(): AuthContext {
   if (typeof window === "undefined") {
     return memoryAuthContext;
@@ -41,17 +46,17 @@ export function getAuthContext(): AuthContext {
   try {
     const raw = window.localStorage.getItem(AUTH_STORAGE_KEY);
     if (!raw) return memoryAuthContext;
-    return JSON.parse(raw) as AuthContext;
+    return { ...(JSON.parse(raw) as AuthContext), ...memoryAuthContext };
   } catch {
     return memoryAuthContext;
   }
 }
 
 export function setAuthContext(context: AuthContext): void {
-  memoryAuthContext = context;
+  memoryAuthContext = { ...getAuthContext(), ...context };
 
   if (typeof window !== "undefined") {
-    window.localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(context));
+    window.localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(persistentAuthContext(memoryAuthContext)));
   }
 }
 
@@ -72,11 +77,19 @@ function authHeaders(): Record<string, string> {
   }
 
   if (auth.apiKey) {
-    headers["X-API-Key"] = auth.apiKey;
+    headers["X-ProjectRAG-API-Key"] = auth.apiKey;
+  }
+
+  if (auth.user) {
+    headers["X-ProjectRAG-User"] = auth.user;
   }
 
   if (auth.role) {
     headers["X-ProjectRAG-Role"] = auth.role;
+  }
+
+  if (auth.tenantId) {
+    headers["X-ProjectRAG-Tenant-Id"] = auth.tenantId;
   }
 
   return headers;
@@ -119,6 +132,29 @@ export function apiPost<T>(path: string, body?: unknown): Promise<T> {
     method: "POST",
     body: body ? JSON.stringify(body) : undefined,
   });
+}
+
+export async function apiUpload<T>(path: string, form: FormData): Promise<T> {
+  const response = await fetch(`${API_BASE}${path}`, {
+    method: "POST",
+    headers: authHeaders(),
+    body: form,
+  });
+
+  if (!response.ok) {
+    let message = `API error ${response.status}: ${response.statusText}`;
+    try {
+      const body = await response.json();
+      if (body?.detail) {
+        message = typeof body.detail === "string" ? body.detail : JSON.stringify(body.detail);
+      }
+    } catch {
+      // Keep default message.
+    }
+    throw new ApiError(response.status, message);
+  }
+
+  return response.json() as Promise<T>;
 }
 
 export function authStatusMessage(error: unknown): string {

@@ -44,7 +44,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const value = useMemo<AuthState>(() => ({
     ...auth,
-    authenticated: Boolean(auth.token || auth.user),
+    authenticated: Boolean(auth.token || (auth.apiKey && auth.user)),
     lastAuthError,
     updateAuth: (next) => {
       setAuthContext(next);
@@ -72,7 +72,7 @@ export function AuthErrorBanner({ error }: { error: unknown }) {
     <section className="card auth-state" role="alert">
       <span className="badge danger">Access issue</span>
       <h2>{authStatusMessage(error)}</h2>
-      <p>Check your token, role, and tenant context in the left navigation.</p>
+      <p>Check your API key, user, role, and tenant context in the left navigation.</p>
     </section>
   );
 }

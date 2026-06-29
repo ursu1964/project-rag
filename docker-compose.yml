@@ -5,14 +5,14 @@ services:
       dockerfile: Dockerfile
     container_name: projectrag-api
     environment:
-      # Local development may run without auth.
+      # Local development now starts with auth/RBAC enabled by default.
       # Non-local environments must set either OIDC/JWT config or an API key hash before startup.
-      APP_ENV: local
+      APP_ENV: ${APP_ENV:-local}
       POSTGRES_HOST: postgres
       POSTGRES_PORT: 5432
-      POSTGRES_DB: projectrag
-      POSTGRES_USER: projectrag
-      POSTGRES_PASSWORD: projectrag_password
+      POSTGRES_DB: ${POSTGRES_DB:-projectrag}
+      POSTGRES_USER: ${POSTGRES_USER:-projectrag}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-me-local-only}
       REDIS_URL: redis://redis:6379/0
       QDRANT_URL: http://qdrant:6333
       GRAPHDB_URL: http://graphdb:7200
@@ -21,8 +21,15 @@ services:
       EMBEDDING_MODEL: ${EMBEDDING_MODEL:-nomic-embed-text}
       OTEL_ENABLED: ${OTEL_ENABLED:-false}
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318/v1/traces
+      PROJECTRAG_API_KEY: ${PROJECTRAG_API_KEY:-local-dev-key}
+      PROJECTRAG_AUTH_REQUIRED: ${PROJECTRAG_AUTH_REQUIRED:-true}
+      PROJECTRAG_ENFORCE_RBAC: ${PROJECTRAG_ENFORCE_RBAC:-true}
+      PROJECTRAG_AUTH_MODE: ${PROJECTRAG_AUTH_MODE:-local}
+      PROJECTRAG_LOCAL_USER: ${PROJECTRAG_LOCAL_USER:-local-dev}
+      PROJECTRAG_LOCAL_ROLE: ${PROJECTRAG_LOCAL_ROLE:-admin}
+      PROJECTRAG_LOCAL_TENANT: ${PROJECTRAG_LOCAL_TENANT:-local}
     ports:
-      - "${APP_PORT:-18000}:8000"
+      - "${LOCAL_BIND_HOST:-127.0.0.1}:${APP_PORT:-18000}:8000"
     depends_on:
       postgres:
         condition: service_healthy
@@ -50,7 +57,7 @@ services:
       NEXT_PUBLIC_API_BASE_URL: http://localhost:18000
       PROJECTRAG_INTERNAL_API_BASE_URL: http://api:8000
     ports:
-      - "3000:3000"
+      - "${LOCAL_BIND_HOST:-127.0.0.1}:3000:3000"
     depends_on:
       api:
         condition: service_healthy
@@ -65,11 +72,11 @@ services:
     image: pgvector/pgvector:pg16@sha256:131dcf7ff6a900545df8e7e092c270aa8c6db2f2c818e408cb45ec21316b74e6
     container_name: projectrag-postgres
     environment:
-      POSTGRES_DB: projectrag
-      POSTGRES_USER: projectrag
-      POSTGRES_PASSWORD: projectrag_password
+      POSTGRES_DB: ${POSTGRES_DB:-projectrag}
+      POSTGRES_USER: ${POSTGRES_USER:-projectrag}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-me-local-only}
     ports:
-      - "${POSTGRES_PORT:-5433}:5432"
+      - "${LOCAL_BIND_HOST:-127.0.0.1}:${POSTGRES_PORT:-5433}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./scripts/init_postgres.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
@@ -83,7 +90,7 @@ services:
     image: redis:7-alpine@sha256:6ab0b6e7381779332f97b8ca76193e45b0756f38d4c0dcda72dbb3c32061ab99
     container_name: projectrag-redis
     ports:
-      - "6379:6379"
+      - "${LOCAL_BIND_HOST:-127.0.0.1}:6379:6379"
     volumes:
       - redis_data:/data
     healthcheck:
@@ -96,8 +103,8 @@ services:
     image: qdrant/qdrant:v1.12.4@sha256:241edb9d7778327516ef218f8c74e1bd61b5ea42cd4f193cb8d0896199705636
     container_name: projectrag-qdrant
     ports:
-      - "6333:6333"
-      - "6334:6334"
+      - "${LOCAL_BIND_HOST:-127.0.0.1}:6333:6333"
+      - "${LOCAL_BIND_HOST:-127.0.0.1}:6334:6334"
     volumes:
       - qdrant_data:/qdrant/storage
 
@@ -105,7 +112,7 @@ services:
     image: ontotext/graphdb:10.8.6@sha256:b5e42a181d7347afad3d0db837abeaaf6dba91c3b1a7cb41ad4d04ddefce18da
     container_name: projectrag-graphdb
     ports:
-      - "7200:7200"
+      - "${LOCAL_BIND_HOST:-127.0.0.1}:7200:7200"
     volumes:
       - graphdb_data:/opt/graphdb/home
 
@@ -116,8 +123,8 @@ services:
     volumes:
       - ./deploy/otel-collector-config.yml:/etc/otel-collector-config.yml:ro
     ports:
-      - "4318:4318"
-      - "8889:8889"
+      - "${LOCAL_BIND_HOST:-127.0.0.1}:4318:4318"
+      - "${LOCAL_BIND_HOST:-127.0.0.1}:8889:8889"
 
   blackbox:
     image: prom/blackbox-exporter:v0.25.0@sha256:b04a9fef4fa086a02fc7fcd8dcdbc4b7b35cc30cdee860fdc6a19dd8b208d63e
@@ -128,7 +135,7 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     ports:
-      - "9115:9115"
+      - "${LOCAL_BIND_HOST:-127.0.0.1}:9115:9115"
 
   prometheus:
     image: prom/prometheus:v2.54.1@sha256:f6639335d34a77d9d9db382b92eeb7fc00934be8eae81dbc03b31cfe90411a94
@@ -142,7 +149,7 @@ services:
       - ./deploy/monitoring/prometheus/alerts.yml:/etc/prometheus/alerts.yml:ro
       - prometheus_data:/prometheus
     ports:
-      - "${PROMETHEUS_PORT:-9091}:9090"
+      - "${LOCAL_BIND_HOST:-127.0.0.1}:${PROMETHEUS_PORT:-9091}:9090"
     depends_on:
       - api
       - blackbox
@@ -158,21 +165,24 @@ services:
       - ${ALERTMANAGER_CONFIG_PATH:-./deploy/monitoring/alertmanager/alertmanager.yml}:/etc/alertmanager/alertmanager.yml:ro
       - alertmanager_data:/alertmanager
     ports:
-      - "${ALERTMANAGER_PORT:-19094}:9093"
+      - "${LOCAL_BIND_HOST:-127.0.0.1}:${ALERTMANAGER_PORT:-19094}:9093"
 
   grafana:
     image: grafana/grafana:11.1.4@sha256:886b56d5534e54f69a8cfcb4b8928da8fc753178a7a3d20c3f9b04b660169805
     container_name: projectrag-grafana
     environment:
-      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
-      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-change-me}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-change-me}
       GF_USERS_DEFAULT_THEME: light
+      POSTGRES_DB: ${POSTGRES_DB:-projectrag}
+      POSTGRES_USER: ${POSTGRES_USER:-projectrag}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-me-local-only}
     volumes:
       - ./deploy/monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
       - ./deploy/monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
       - grafana_data:/var/lib/grafana
     ports:
-      - "${GRAFANA_PORT:-3001}:3000"
+      - "${LOCAL_BIND_HOST:-127.0.0.1}:${GRAFANA_PORT:-3001}:3000"
     depends_on:
       - prometheus
 

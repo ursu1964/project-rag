@@ -17,7 +17,6 @@ from app.security.api_key_manager import (
     validate_api_key_format,
     verify_api_key,
 )
-from app.security.identity import IdentityResolutionError, resolve_request_identity
 
 
 # ============================================================================
