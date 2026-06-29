@@ -82,24 +82,59 @@ cp .env.example .env
 
 Edit `.env` if your local ports or model names differ.
 
-## Start Local Infrastructure
+## Start Local Application
 
 ```bash
-docker compose up -d
+./run.sh
 ```
 
-Local compose keeps auth optional for developer convenience. For production, the app now refuses to start unless either OIDC/JWT or an API key is configured. See [.env.example](.env.example) for the non-local auth hint block and [docs/SECURITY_PHASE_1.md](docs/SECURITY_PHASE_1.md) for the full startup guard details.
+Use `./run.sh --reset` only when you intentionally want to stop/remove existing
+containers before startup.
+
+Local compose now starts with auth and RBAC enabled. In the web UI, click
+**Use local admin** in the left navigation or enter:
+
+```text
+API key: local-dev-key
+User: local-dev
+Role: admin
+Tenant: local
+```
+
+Open the dashboard launcher:
+
+```text
+http://localhost:3000/dashboards
+```
+
+Grafana is available at:
+
+```text
+http://localhost:3001
+```
+
+Default local Grafana login is `admin` / `admin` unless overridden in `.env`.
+If an old Grafana volume kept a previous password, run:
+
+```bash
+./scripts/reset_grafana_admin.sh
+```
+
+For production, the app refuses to start unless either OIDC/JWT or an API key is
+configured. See [.env.example](.env.example) and
+[docs/SECURITY_PHASE_1.md](docs/SECURITY_PHASE_1.md).
 
 This starts:
 
-- PostgreSQL with pgvector on port `5432`
+- Frontend on port `3000`
+- API on port `18000`
+- PostgreSQL with pgvector on host port `5433`
 - GraphDB on port `7200`
+- Grafana dashboards on port `3001`
+- Prometheus on port `9091`
 
-## Initialize PostgreSQL
-
-```bash
-docker exec -i projectrag-postgres psql -U projectrag -d projectrag < scripts/init_postgres.sql
-```
+PostgreSQL initializes automatically from `scripts/init_postgres.sql` on a fresh
+database volume.
 
 ## Alembic Migrations
 
@@ -155,16 +190,16 @@ Ingestion will:
 
 ## Start the API
 
-Use port `8001` by default unless you intentionally free `8000` for ProjectRAG.
+The Docker Compose API port is `18000` by default.
 
 ```bash
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8001
+uvicorn app.main:app --reload --host 0.0.0.0 --port 18000
 ```
 
 ## Health Check
 
 ```bash
-curl http://localhost:8001/health
+curl http://localhost:18000/health
 ```
 
 Expected response:
@@ -176,8 +211,12 @@ Expected response:
 ## Example Query
 
 ```bash
-curl -X POST http://localhost:8001/query \
+curl -X POST http://localhost:18000/query \
   -H "Content-Type: application/json" \
+  -H "X-ProjectRAG-API-Key: local-dev-key" \
+  -H "X-ProjectRAG-User: local-dev" \
+  -H "X-ProjectRAG-Role: admin" \
+  -H "X-ProjectRAG-Tenant-Id: local" \
   -d '{"question": "What does VM1 depend on?"}'
 ```
 

@@ -11,6 +11,7 @@ class AzureInventoryEntity(BaseModel):
     name: str = ""
     entity_type: str = "AzureResource"
     provider: str = "azure"
+    region: str = "unknown"
     location: str = ""
     resource_id: str = ""
     metadata: dict[str, Any] = Field(default_factory=dict)

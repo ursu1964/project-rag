@@ -18,6 +18,68 @@
         "title": "BatchEmbeddingRequest",
         "type": "object"
       },
+      "ChatCompletionRequest": {
+        "properties": {
+          "messages": {
+            "items": {
+              "$ref": "#/components/schemas/ChatMessage"
+            },
+            "minItems": 1,
+            "title": "Messages",
+            "type": "array"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
+          },
+          "stream": {
+            "default": false,
+            "title": "Stream",
+            "type": "boolean"
+          },
+          "temperature": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Temperature"
+          }
+        },
+        "required": [
+          "messages"
+        ],
+        "title": "ChatCompletionRequest",
+        "type": "object"
+      },
+      "ChatMessage": {
+        "properties": {
+          "content": {
+            "title": "Content",
+            "type": "string"
+          },
+          "role": {
+            "title": "Role",
+            "type": "string"
+          }
+        },
+        "required": [
+          "role",
+          "content"
+        ],
+        "title": "ChatMessage",
+        "type": "object"
+      },
       "CognitiveQueryRequest": {
         "properties": {
           "objective": {
@@ -93,20 +155,6 @@
           "id"
         ],
         "title": "DocumentRecord",
-        "type": "object"
-      },
-      "EmbeddingRequest": {
-        "properties": {
-          "text": {
-            "minLength": 1,
-            "title": "Text",
-            "type": "string"
-          }
-        },
-        "required": [
-          "text"
-        ],
-        "title": "EmbeddingRequest",
         "type": "object"
       },
       "FeedbackRequest": {
@@ -362,6 +410,13 @@
       },
       "ValidationError": {
         "properties": {
+          "ctx": {
+            "title": "Context",
+            "type": "object"
+          },
+          "input": {
+            "title": "Input"
+          },
           "loc": {
             "items": {
               "anyOf": [
@@ -391,6 +446,60 @@
           "type"
         ],
         "title": "ValidationError",
+        "type": "object"
+      },
+      "app__api__routes_embeddings__EmbeddingRequest": {
+        "properties": {
+          "text": {
+            "minLength": 1,
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text"
+        ],
+        "title": "EmbeddingRequest",
+        "type": "object"
+      },
+      "app__api__routes_openai_compat__EmbeddingRequest": {
+        "properties": {
+          "encoding_format": {
+            "const": "float",
+            "default": "float",
+            "title": "Encoding Format",
+            "type": "string"
+          },
+          "input": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              }
+            ],
+            "title": "Input"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
+          }
+        },
+        "required": [
+          "input"
+        ],
+        "title": "EmbeddingRequest",
         "type": "object"
       }
     }
@@ -993,7 +1102,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/EmbeddingRequest"
+                "$ref": "#/components/schemas/app__api__routes_embeddings__EmbeddingRequest"
               }
             }
           },
@@ -1310,6 +1419,25 @@
         "summary": "Health Endpoint"
       }
     },
+    "/api/v1/health/ready": {
+      "get": {
+        "description": "Check application dependencies without raising on failures.",
+        "operationId": "deep_health_api_v1_health_ready_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Deep Health"
+      }
+    },
     "/api/v1/ingest": {
       "post": {
         "operationId": "ingest_raw_documents_api_v1_ingest_post",
@@ -1581,6 +1709,81 @@
         "summary": "Query"
       }
     },
+    "/api/v1/registry": {
+      "get": {
+        "operationId": "registry_api_v1_registry_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Registry Api V1 Registry Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Registry",
+        "tags": [
+          "registry"
+        ]
+      }
+    },
+    "/api/v1/registry/agents": {
+      "get": {
+        "operationId": "agents_api_v1_registry_agents_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  "title": "Response Agents Api V1 Registry Agents Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Agents",
+        "tags": [
+          "registry"
+        ]
+      }
+    },
+    "/api/v1/registry/workflows": {
+      "get": {
+        "operationId": "workflows_api_v1_registry_workflows_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  "title": "Response Workflows Api V1 Registry Workflows Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Workflows",
+        "tags": [
+          "registry"
+        ]
+      }
+    },
     "/api/v1/retrieval/graph": {
       "post": {
         "operationId": "graph_retrieval_api_v1_retrieval_graph_post",
@@ -1729,6 +1932,29 @@
           }
         },
         "summary": "Source Catalog"
+      }
+    },
+    "/api/v1/topology": {
+      "get": {
+        "operationId": "get_topology_api_v1_topology_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Topology Api V1 Topology Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Topology",
+        "tags": [
+          "topology"
+        ]
       }
     },
     "/api/v1/validation/results": {
@@ -2411,7 +2637,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/EmbeddingRequest"
+                "$ref": "#/components/schemas/app__api__routes_embeddings__EmbeddingRequest"
               }
             }
           },
@@ -2728,6 +2954,25 @@
         "summary": "Health Endpoint"
       }
     },
+    "/health/ready": {
+      "get": {
+        "description": "Check application dependencies without raising on failures.",
+        "operationId": "deep_health_health_ready_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Deep Health"
+      }
+    },
     "/ingest": {
       "post": {
         "operationId": "ingest_raw_documents_ingest_post",
@@ -2999,6 +3244,81 @@
         "summary": "Query"
       }
     },
+    "/registry": {
+      "get": {
+        "operationId": "registry_registry_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Registry Registry Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Registry",
+        "tags": [
+          "registry"
+        ]
+      }
+    },
+    "/registry/agents": {
+      "get": {
+        "operationId": "agents_registry_agents_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  "title": "Response Agents Registry Agents Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Agents",
+        "tags": [
+          "registry"
+        ]
+      }
+    },
+    "/registry/workflows": {
+      "get": {
+        "operationId": "workflows_registry_workflows_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  "title": "Response Workflows Registry Workflows Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Workflows",
+        "tags": [
+          "registry"
+        ]
+      }
+    },
     "/retrieval/graph": {
       "post": {
         "operationId": "graph_retrieval_retrieval_graph_post",
@@ -3147,6 +3467,138 @@
           }
         },
         "summary": "Source Catalog"
+      }
+    },
+    "/topology": {
+      "get": {
+        "operationId": "get_topology_topology_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Topology Topology Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Topology",
+        "tags": [
+          "topology"
+        ]
+      }
+    },
+    "/v1/chat/completions": {
+      "post": {
+        "operationId": "chat_completions_v1_chat_completions_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChatCompletionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Chat Completions V1 Chat Completions Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Chat Completions",
+        "tags": [
+          "openai-compatible"
+        ]
+      }
+    },
+    "/v1/embeddings": {
+      "post": {
+        "operationId": "embeddings_v1_embeddings_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/app__api__routes_openai_compat__EmbeddingRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Embeddings V1 Embeddings Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Embeddings",
+        "tags": [
+          "openai-compatible"
+        ]
+      }
+    },
+    "/v1/models": {
+      "get": {
+        "operationId": "list_models_v1_models_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response List Models V1 Models Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Models",
+        "tags": [
+          "openai-compatible"
+        ]
       }
     },
     "/validation/results": {

@@ -11,6 +11,6 @@ class AWSInventoryEntity(BaseModel):
     name: str = ""
     entity_type: str = "AWSResource"
     provider: str = "aws"
-    region: str = ""
+    region: str = "unknown"
     resource_id: str = ""
     metadata: dict[str, Any] = Field(default_factory=dict)
