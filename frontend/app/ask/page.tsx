@@ -9,6 +9,7 @@ type QueryResult = {
   route?: string;
   validation?: Record<string, unknown>;
   citations?: unknown[];
+  provenance?: { source_documents?: string[]; workflow_id?: string };
   policy_decision?: Record<string, unknown>;
   metrics?: Record<string, unknown>;
 };
@@ -18,6 +19,7 @@ export default function AskPage() {
   const [result, setResult] = useState<QueryResult | null>(null);
   const [error, setError] = useState<string>('');
   const [loading, setLoading] = useState(false);
+  const sources = result?.provenance?.source_documents || [];
 
   async function submit() {
     setLoading(true);
@@ -71,8 +73,21 @@ export default function AskPage() {
                 <th>Citations</th>
                 <td>{Array.isArray(result?.citations) ? result?.citations.length : 0}</td>
               </tr>
+              <tr>
+                <th>Sources</th>
+                <td>{sources.length}</td>
+              </tr>
             </tbody>
           </table>
+          {result && sources.length === 0 ? (
+            <p className="badge warn">No source documents returned. Upload and ingest documents before relying on this answer.</p>
+          ) : null}
+          {sources.length > 0 ? (
+            <div className="json-box">
+              <strong>Source documents</strong>
+              <pre>{sources.join('\n')}</pre>
+            </div>
+          ) : null}
           <div className="json-box">
             <pre>
               {result
@@ -80,6 +95,7 @@ export default function AskPage() {
                     {
                       validation: result.validation,
                       citations: result.citations,
+                      provenance: result.provenance,
                       policy_decision: result.policy_decision,
                       metrics: result.metrics,
                     },

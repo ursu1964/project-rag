@@ -6,10 +6,13 @@ import { useAuth } from '@/components/AuthProvider';
 import { AuthRole } from '@/lib/api';
 
 const nav: Array<[string, string, AuthRole[]?]> = [
-  ['Dashboard', '/'],
+  ['Dashboards', '/dashboards'],
   ['Ask AI', '/ask', ['admin', 'operator', 'analyst', 'agent']],
   ['Topology', '/topology', ['admin', 'operator', 'analyst', 'viewer', 'agent']],
   ['Documents', '/documents', ['admin', 'operator', 'analyst', 'viewer', 'agent']],
+  ['Models', '/models', ['admin', 'operator', 'analyst', 'viewer', 'agent']],
+  ['Memory', '/memory', ['admin', 'operator', 'analyst', 'viewer', 'agent']],
+  ['Workflows', '/workflows', ['admin', 'operator', 'analyst', 'viewer', 'agent']],
   ['Audit', '/audit', ['admin']],
   ['Evaluation', '/evaluation', ['admin', 'operator', 'analyst']],
   ['Admin', '/admin', ['admin']],
@@ -19,6 +22,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const auth = useAuth();
   const tenantEditable = auth.role === 'admin';
+  const useLocalAdmin = () => auth.updateAuth({ apiKey: 'local-dev-key', user: 'local-dev', role: 'admin', tenantId: 'local' });
 
   return (
     <div className="shell">
@@ -33,21 +37,23 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
         <section className="auth-panel" aria-label="Authentication context">
           <label>
-            API token
+            API key
             <input
               type="password"
-              value={auth.token}
-              placeholder="Bearer/API token"
-              onChange={(event) => auth.updateAuth({ token: event.target.value })}
+              value={auth.apiKey ?? ''}
+              placeholder="local-dev-key"
+              onChange={(event) => auth.updateAuth({ apiKey: event.target.value })}
             />
           </label>
+          <p className="auth-help">Local dev auth uses API key + user/role/tenant headers. This is not a production login.</p>
+          <button className="button-muted" type="button" onClick={useLocalAdmin}>Use local admin</button>
           <label>
             User
-            <input value={auth.user} onChange={(event) => auth.updateAuth({ user: event.target.value })} />
+            <input value={auth.user ?? ''} onChange={(event) => auth.updateAuth({ user: event.target.value })} />
           </label>
           <label>
             Role
-            <select value={auth.role} onChange={(event) => auth.updateAuth({ role: event.target.value as AuthRole })}>
+            <select value={auth.role ?? 'viewer'} onChange={(event) => auth.updateAuth({ role: event.target.value as AuthRole })}>
               <option value="viewer">viewer</option>
               <option value="analyst">analyst</option>
               <option value="operator">operator</option>
@@ -58,7 +64,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <label>
             Tenant
             <input
-              value={auth.tenantId}
+              value={auth.tenantId ?? ''}
               disabled={!tenantEditable}
               title={tenantEditable ? 'Admin tenant context' : 'Only admins may edit tenant context'}
               onChange={(event) => auth.updateAuth({ tenantId: event.target.value })}
