@@ -5,6 +5,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends
 
 from app.core.config import settings
+from app.core.correlation import reset_workflow_id, set_workflow_id
 from app.core.metrics import REQUEST_COUNTER, observe_query_metrics
 from app.core.metrics import observe_validation_confidence
 from app.core.schemas import QueryRequest
@@ -37,14 +38,20 @@ def _try_save_checkpoint(
 ) -> None:
     """Best-effort checkpoint persistence to keep request path resilient."""
     try:
-        save_workflow_checkpoint(workflow_id, step_name, state, status=status, error=error)
+        save_workflow_checkpoint(
+            workflow_id, step_name, state, status=status, error=error
+        )
     except Exception:
         # Checkpoint persistence should not break query execution.
         pass
 
 
 def _query_evidence(state: dict) -> dict:
-    merged = state.get("merged_context") if isinstance(state.get("merged_context"), dict) else {}
+    merged = (
+        state.get("merged_context")
+        if isinstance(state.get("merged_context"), dict)
+        else {}
+    )
     return {
         "vector": merged.get("vector") or state.get("vector_context") or [],
         "graph": merged.get("graph") or state.get("graph_context") or [],
@@ -61,13 +68,17 @@ def _source_documents(citations: list[dict]) -> list[str]:
     return sources
 
 
-def _provenance(state: dict, evidence: dict, citations: list[dict], workflow_id: str) -> dict:
+def _provenance(
+    state: dict, evidence: dict, citations: list[dict], workflow_id: str
+) -> dict:
     metrics = state.get("metrics") or {}
     validation = state.get("validation") or {}
     return {
         "workflow_id": workflow_id,
         "user_question": redact_sensitive_text(state.get("question")),
-        "rewritten_query": redact_sensitive_text(state.get("rewritten_query") or state.get("question")),
+        "rewritten_query": redact_sensitive_text(
+            state.get("rewritten_query") or state.get("question")
+        ),
         "retrieved_chunks": evidence["vector"],
         "source_documents": _source_documents(citations),
         "metadata_filters": state.get("metadata_filters") or [],
@@ -86,7 +97,9 @@ def _provenance(state: dict, evidence: dict, citations: list[dict], workflow_id:
 
 def _format_query_response(state: dict, workflow_id: str) -> dict:
     evidence = redact_sensitive_data(_query_evidence(state))
-    citations = redact_sensitive_data(state.get("citations") or build_citations(evidence))
+    citations = redact_sensitive_data(
+        state.get("citations") or build_citations(evidence)
+    )
     provenance = _provenance(state, evidence, citations, workflow_id)
     return {
         "question": redact_sensitive_text(state.get("question")),
@@ -113,7 +126,10 @@ def query(request: QueryRequest, debug: bool = False) -> dict:
             resource="/query",
             decision="deny",
             risk_level=policy_decision.get("risk_level", "high"),
-            metadata={"violations": policy_decision.get("violations", []), "question_redacted": audit_question},
+            metadata={
+                "violations": policy_decision.get("violations", []),
+                "question_redacted": audit_question,
+            },
         )
         metrics = {"duration_ms": elapsed_ms(started)}
         state = {
@@ -133,6 +149,7 @@ def query(request: QueryRequest, debug: bool = False) -> dict:
         return state if debug else _format_query_response(state, workflow_id="")
 
     workflow_id = create_workflow_run(audit_question)
+    workflow_id_token = set_workflow_id(workflow_id)
     workflow = build_workflow()
     try:
         _try_save_checkpoint(
@@ -141,7 +158,9 @@ def query(request: QueryRequest, debug: bool = False) -> dict:
             {"question": audit_question, "debug": debug},
             status="running",
         )
-        state = workflow.invoke({"question": request.question, "workflow_id": workflow_id})
+        state = workflow.invoke(
+            {"question": request.question, "workflow_id": workflow_id}
+        )
         _try_save_checkpoint(
             workflow_id,
             "workflow_invoke",
@@ -203,3 +222,5 @@ def query(request: QueryRequest, debug: bool = False) -> dict:
         )
         complete_workflow_run(workflow_id, status="failed")
         raise
+    finally:
+        reset_workflow_id(workflow_id_token)

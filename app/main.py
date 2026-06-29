@@ -1,4 +1,3 @@
-
 """FastAPI application entrypoint."""
 
 from typing import cast
@@ -19,7 +18,9 @@ from app.api.routes_graph import router as graph_router
 from app.api.routes_health import router as health_router
 from app.api.routes_memory import router as memory_router
 from app.api.routes_operations import router as operations_router
+from app.api.routes_openai_compat import router as openai_compat_router
 from app.api.routes_query import router as query_router
+from app.api.routes_registry import router as registry_router
 from app.api.routes_retrieval import router as retrieval_router
 from app.api.routes_sources import router as sources_router
 from app.api.routes_workflow_audit import router as workflow_audit_router
@@ -29,8 +30,7 @@ from app.core.settings_validator import validate_settings
 from app.core.telemetry import setup_telemetry
 from app.gateway.middleware import install_gateway_middleware
 from app.graph.graphdb_client import ensure_repository_ready
-from app.api import routes_topology 
-from app.api import routes_health
+from app.api import routes_topology
 
 logger = get_logger(__name__)
 _VERSION_PREFIX = "/api/v1"
@@ -44,7 +44,9 @@ def _expand_included_routes(routes: list[object]) -> list[BaseRoute]:
             expanded.append(cast(BaseRoute, route))
             continue
 
-        nested_router = getattr(route, "router", None) or getattr(route, "original_router", None)
+        nested_router = getattr(route, "router", None) or getattr(
+            route, "original_router", None
+        )
         nested_routes = getattr(nested_router, "routes", None)
         if nested_routes:
             expanded.extend(_expand_included_routes(list(nested_routes)))
@@ -65,12 +67,18 @@ def create_app() -> FastAPI:
             ensure_repository_ready()
         except Exception as exc:
             # Do not block startup; GraphDB calls remain lazily resilient.
-            logger.warning("GraphDB repository readiness check failed at startup: %s", exc)
+            logger.warning(
+                "GraphDB repository readiness check failed at startup: %s", exc
+            )
     app = FastAPI(title="ProjectRAG")
     install_gateway_middleware(app)
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=[origin.strip() for origin in settings.cors_allow_origins.split(",") if origin.strip()],
+        allow_origins=[
+            origin.strip()
+            for origin in settings.cors_allow_origins.split(",")
+            if origin.strip()
+        ],
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
@@ -79,6 +87,7 @@ def create_app() -> FastAPI:
     routers = (
         health_router,
         query_router,
+        registry_router,
         embeddings_router,
         retrieval_router,
         sources_router,
@@ -93,10 +102,13 @@ def create_app() -> FastAPI:
         operations_router,
         cognitive_router,
         workflow_audit_router,
+        routes_topology.router,
     )
     for router in routers:
         app.include_router(router)
         app.include_router(router, prefix=_VERSION_PREFIX)
+
+    app.include_router(openai_compat_router)
 
     @app.get(_VERSION_PREFIX, include_in_schema=False)
     async def api_v1_root() -> dict[str, str]:
@@ -106,17 +118,7 @@ def create_app() -> FastAPI:
     async def api_v1_root_slash() -> dict[str, str]:
         return {"status": "ok", "version": "v1"}
 
-    if any(not hasattr(route, "path") for route in app.router.routes):
-        app.router.routes[:] = _expand_included_routes(list(app.router.routes))
     return app
 
 
-def create_app()->FastAPI:
-    app = FastAPI(title="ProjectRAG")
-    app.include_router(health_router)
-    app.include_router(documents_router)
-    app.include_router(query_router)
-    app.include_router(routes_topology.router)
-
-    return app
 app = create_app()
