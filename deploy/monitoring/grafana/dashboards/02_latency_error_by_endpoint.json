@@ -3,7 +3,7 @@
   "uid": "projectrag-latency-errors",
   "title": "ProjectRAG - Latency and Error Rate by Endpoint",
   "schemaVersion": 39,
-  "version": 1,
+  "version": 2,
   "timezone": "browser",
   "refresh": "15s",
   "time": {
@@ -115,6 +115,120 @@
           "expr": "sum by (path) (rate(projectrag_http_requests_total[5m]))"
         }
       ]
+    },
+    {
+      "id": 20,
+      "title": "Workflow runs over time from PostgreSQL",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 16
+      },
+      "datasource": {
+        "type": "postgres",
+        "uid": "projectrag-postgres"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "postgres",
+            "uid": "projectrag-postgres"
+          },
+          "format": "time_series",
+          "rawSql": "SELECT $__timeGroupAlias(created_at, '5m'), count(*) AS runs FROM workflow_runs WHERE $__timeFilter(created_at) GROUP BY 1 ORDER BY 1",
+          "rawQuery": true
+        }
+      ]
+    },
+    {
+      "id": 21,
+      "title": "Security events over time from PostgreSQL",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 16
+      },
+      "datasource": {
+        "type": "postgres",
+        "uid": "projectrag-postgres"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "postgres",
+            "uid": "projectrag-postgres"
+          },
+          "format": "time_series",
+          "rawSql": "SELECT $__timeGroupAlias(timestamp, '5m'), count(*) AS events FROM security_audit_events WHERE $__timeFilter(timestamp) GROUP BY 1 ORDER BY 1",
+          "rawQuery": true
+        }
+      ]
+    },
+    {
+      "id": 22,
+      "title": "Recent workflow/API errors from PostgreSQL",
+      "type": "table",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 24
+      },
+      "datasource": {
+        "type": "postgres",
+        "uid": "projectrag-postgres"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "postgres",
+            "uid": "projectrag-postgres"
+          },
+          "format": "table",
+          "rawSql": "SELECT created_at AS time, workflow_name, status, COALESCE(input->>'question', input->>'query', left(input::text, 120)) AS request, error FROM workflow_runs WHERE error IS NOT NULL OR status IN ('failed','error') ORDER BY created_at DESC LIMIT 30",
+          "rawQuery": true
+        }
+      ],
+      "options": {
+        "showHeader": true
+      }
+    },
+    {
+      "id": 23,
+      "title": "Recent denied/unauthorized events from PostgreSQL",
+      "type": "table",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 24
+      },
+      "datasource": {
+        "type": "postgres",
+        "uid": "projectrag-postgres"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "postgres",
+            "uid": "projectrag-postgres"
+          },
+          "format": "table",
+          "rawSql": "SELECT timestamp AS time, action, resource, decision, risk_level, metadata->>'path' AS path, metadata->>'reason' AS reason FROM security_audit_events WHERE decision <> 'allow' ORDER BY timestamp DESC LIMIT 30",
+          "rawQuery": true
+        }
+      ],
+      "options": {
+        "showHeader": true
+      }
     }
   ]
 }

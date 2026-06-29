@@ -3,7 +3,7 @@
   "uid": "projectrag-health",
   "title": "ProjectRAG - Health and Availability",
   "schemaVersion": 39,
-  "version": 1,
+  "version": 2,
   "timezone": "browser",
   "refresh": "15s",
   "time": {
@@ -151,6 +151,222 @@
           "expr": "avg_over_time(probe_success{job='blackbox_http',instance='http://api:8000/health/live'}[5m]) * 100"
         }
       ]
+    },
+    {
+      "id": 20,
+      "title": "PostgreSQL documents",
+      "type": "stat",
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 0,
+        "y": 20
+      },
+      "datasource": {
+        "type": "postgres",
+        "uid": "projectrag-postgres"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "postgres",
+            "uid": "projectrag-postgres"
+          },
+          "format": "table",
+          "rawSql": "SELECT count(*) AS value FROM documents",
+          "rawQuery": true
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value"
+      }
+    },
+    {
+      "id": 21,
+      "title": "PostgreSQL chunks",
+      "type": "stat",
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 6,
+        "y": 20
+      },
+      "datasource": {
+        "type": "postgres",
+        "uid": "projectrag-postgres"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "postgres",
+            "uid": "projectrag-postgres"
+          },
+          "format": "table",
+          "rawSql": "SELECT count(*) AS value FROM chunks",
+          "rawQuery": true
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value"
+      }
+    },
+    {
+      "id": 22,
+      "title": "PostgreSQL graph facts",
+      "type": "stat",
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 12,
+        "y": 20
+      },
+      "datasource": {
+        "type": "postgres",
+        "uid": "projectrag-postgres"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "postgres",
+            "uid": "projectrag-postgres"
+          },
+          "format": "table",
+          "rawSql": "SELECT count(*) AS value FROM graph_facts",
+          "rawQuery": true
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value"
+      }
+    },
+    {
+      "id": 23,
+      "title": "Open background jobs",
+      "type": "stat",
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 18,
+        "y": 20
+      },
+      "datasource": {
+        "type": "postgres",
+        "uid": "projectrag-postgres"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "postgres",
+            "uid": "projectrag-postgres"
+          },
+          "format": "table",
+          "rawSql": "SELECT count(*) AS value FROM background_jobs WHERE status NOT IN ('completed','succeeded','success','done')",
+          "rawQuery": true
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value"
+      }
+    },
+    {
+      "id": 24,
+      "title": "Recent security denials from PostgreSQL",
+      "type": "table",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 24
+      },
+      "datasource": {
+        "type": "postgres",
+        "uid": "projectrag-postgres"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "postgres",
+            "uid": "projectrag-postgres"
+          },
+          "format": "table",
+          "rawSql": "SELECT timestamp AS time, \"user\", role, action, resource, decision, risk_level FROM security_audit_events WHERE decision <> 'allow' ORDER BY timestamp DESC LIMIT 25",
+          "rawQuery": true
+        }
+      ],
+      "options": {
+        "showHeader": true
+      }
+    },
+    {
+      "id": 25,
+      "title": "Latest ingested documents",
+      "type": "table",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 24
+      },
+      "datasource": {
+        "type": "postgres",
+        "uid": "projectrag-postgres"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "postgres",
+            "uid": "projectrag-postgres"
+          },
+          "format": "table",
+          "rawSql": "SELECT created_at AS time, source, COALESCE(metadata->>'tenant_id','local') AS tenant_id, left(file_hash, 16) AS file_hash_prefix FROM documents ORDER BY created_at DESC LIMIT 25",
+          "rawQuery": true
+        }
+      ],
+      "options": {
+        "showHeader": true
+      }
     }
   ]
 }

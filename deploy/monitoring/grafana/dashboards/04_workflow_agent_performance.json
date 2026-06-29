@@ -3,7 +3,7 @@
   "uid": "projectrag-workflow-agents",
   "title": "ProjectRAG - Workflow and Agent Performance",
   "schemaVersion": 39,
-  "version": 1,
+  "version": 2,
   "timezone": "browser",
   "refresh": "15s",
   "time": {
@@ -169,6 +169,282 @@
           "expr": "60 * sum by (operation, model) (rate(projectrag_llm_call_errors_total[5m]))"
         }
       ]
+    },
+    {
+      "id": 20,
+      "title": "Workflow runs in PostgreSQL",
+      "type": "stat",
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 0,
+        "y": 24
+      },
+      "datasource": {
+        "type": "postgres",
+        "uid": "projectrag-postgres"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "postgres",
+            "uid": "projectrag-postgres"
+          },
+          "format": "table",
+          "rawSql": "SELECT count(*) AS value FROM workflow_runs",
+          "rawQuery": true
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value"
+      }
+    },
+    {
+      "id": 21,
+      "title": "Agent runs in PostgreSQL",
+      "type": "stat",
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 6,
+        "y": 24
+      },
+      "datasource": {
+        "type": "postgres",
+        "uid": "projectrag-postgres"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "postgres",
+            "uid": "projectrag-postgres"
+          },
+          "format": "table",
+          "rawSql": "SELECT count(*) AS value FROM agent_runs",
+          "rawQuery": true
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value"
+      }
+    },
+    {
+      "id": 22,
+      "title": "Validation results in PostgreSQL",
+      "type": "stat",
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 12,
+        "y": 24
+      },
+      "datasource": {
+        "type": "postgres",
+        "uid": "projectrag-postgres"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "postgres",
+            "uid": "projectrag-postgres"
+          },
+          "format": "table",
+          "rawSql": "SELECT count(*) AS value FROM validation_results",
+          "rawQuery": true
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value"
+      }
+    },
+    {
+      "id": 23,
+      "title": "Failed workflows",
+      "type": "stat",
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 18,
+        "y": 24
+      },
+      "datasource": {
+        "type": "postgres",
+        "uid": "projectrag-postgres"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "postgres",
+            "uid": "projectrag-postgres"
+          },
+          "format": "table",
+          "rawSql": "SELECT count(*) AS value FROM workflow_runs WHERE status IN ('failed','error') OR error IS NOT NULL",
+          "rawQuery": true
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value"
+      }
+    },
+    {
+      "id": 24,
+      "title": "Recent workflow runs from PostgreSQL",
+      "type": "table",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 28
+      },
+      "datasource": {
+        "type": "postgres",
+        "uid": "projectrag-postgres"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "postgres",
+            "uid": "projectrag-postgres"
+          },
+          "format": "table",
+          "rawSql": "SELECT created_at AS time, workflow_name, status, COALESCE(input->>'question', input->>'query', left(input::text, 120)) AS question, error FROM workflow_runs ORDER BY created_at DESC LIMIT 40",
+          "rawQuery": true
+        }
+      ],
+      "options": {
+        "showHeader": true
+      }
+    },
+    {
+      "id": 25,
+      "title": "Recent agent runs from PostgreSQL",
+      "type": "table",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 28
+      },
+      "datasource": {
+        "type": "postgres",
+        "uid": "projectrag-postgres"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "postgres",
+            "uid": "projectrag-postgres"
+          },
+          "format": "table",
+          "rawSql": "SELECT created_at AS time, agent_name, status, left(input::text, 120) AS input_preview, left(output::text, 120) AS output_preview, error FROM agent_runs ORDER BY created_at DESC LIMIT 40",
+          "rawQuery": true
+        }
+      ],
+      "options": {
+        "showHeader": true
+      }
+    },
+    {
+      "id": 26,
+      "title": "Validation results from PostgreSQL",
+      "type": "table",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 36
+      },
+      "datasource": {
+        "type": "postgres",
+        "uid": "projectrag-postgres"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "postgres",
+            "uid": "projectrag-postgres"
+          },
+          "format": "table",
+          "rawSql": "SELECT created_at AS time, validator_name, passed, left(details::text, 220) AS details FROM validation_results ORDER BY created_at DESC LIMIT 40",
+          "rawQuery": true
+        }
+      ],
+      "options": {
+        "showHeader": true
+      }
+    },
+    {
+      "id": 27,
+      "title": "Background jobs from PostgreSQL",
+      "type": "table",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 36
+      },
+      "datasource": {
+        "type": "postgres",
+        "uid": "projectrag-postgres"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "postgres",
+            "uid": "projectrag-postgres"
+          },
+          "format": "table",
+          "rawSql": "SELECT created_at AS time, job_type, status, resource_type, resource_id, attempts, max_attempts, next_retry_at, error FROM background_jobs ORDER BY created_at DESC LIMIT 40",
+          "rawQuery": true
+        }
+      ],
+      "options": {
+        "showHeader": true
+      }
     }
   ]
 }

@@ -1,0 +1,519 @@
+{
+  "id": null,
+  "uid": "projectrag-postgres-data",
+  "title": "ProjectRAG - PostgreSQL Data and Ingestion",
+  "schemaVersion": 39,
+  "version": 1,
+  "timezone": "browser",
+  "refresh": "15s",
+  "time": {
+    "from": "now-24h",
+    "to": "now"
+  },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Documents",
+      "type": "stat",
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 0,
+        "y": 0
+      },
+      "datasource": {
+        "type": "postgres",
+        "uid": "projectrag-postgres"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "postgres",
+            "uid": "projectrag-postgres"
+          },
+          "format": "table",
+          "rawSql": "SELECT count(*) AS value FROM documents",
+          "rawQuery": true
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value"
+      }
+    },
+    {
+      "id": 2,
+      "title": "Chunks",
+      "type": "stat",
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 4,
+        "y": 0
+      },
+      "datasource": {
+        "type": "postgres",
+        "uid": "projectrag-postgres"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "postgres",
+            "uid": "projectrag-postgres"
+          },
+          "format": "table",
+          "rawSql": "SELECT count(*) AS value FROM chunks",
+          "rawQuery": true
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value"
+      }
+    },
+    {
+      "id": 3,
+      "title": "Graph facts",
+      "type": "stat",
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 8,
+        "y": 0
+      },
+      "datasource": {
+        "type": "postgres",
+        "uid": "projectrag-postgres"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "postgres",
+            "uid": "projectrag-postgres"
+          },
+          "format": "table",
+          "rawSql": "SELECT count(*) AS value FROM graph_facts",
+          "rawQuery": true
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value"
+      }
+    },
+    {
+      "id": 4,
+      "title": "Workflow runs",
+      "type": "stat",
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 12,
+        "y": 0
+      },
+      "datasource": {
+        "type": "postgres",
+        "uid": "projectrag-postgres"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "postgres",
+            "uid": "projectrag-postgres"
+          },
+          "format": "table",
+          "rawSql": "SELECT count(*) AS value FROM workflow_runs",
+          "rawQuery": true
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value"
+      }
+    },
+    {
+      "id": 5,
+      "title": "Audit events",
+      "type": "stat",
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 16,
+        "y": 0
+      },
+      "datasource": {
+        "type": "postgres",
+        "uid": "projectrag-postgres"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "postgres",
+            "uid": "projectrag-postgres"
+          },
+          "format": "table",
+          "rawSql": "SELECT count(*) AS value FROM security_audit_events",
+          "rawQuery": true
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value"
+      }
+    },
+    {
+      "id": 6,
+      "title": "Validation results",
+      "type": "stat",
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 20,
+        "y": 0
+      },
+      "datasource": {
+        "type": "postgres",
+        "uid": "projectrag-postgres"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "postgres",
+            "uid": "projectrag-postgres"
+          },
+          "format": "table",
+          "rawSql": "SELECT count(*) AS value FROM validation_results",
+          "rawQuery": true
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value"
+      }
+    },
+    {
+      "id": 7,
+      "title": "Documents ingested over time",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 4
+      },
+      "datasource": {
+        "type": "postgres",
+        "uid": "projectrag-postgres"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "postgres",
+            "uid": "projectrag-postgres"
+          },
+          "format": "time_series",
+          "rawSql": "SELECT $__timeGroupAlias(created_at, '5m'), count(*) AS documents FROM documents WHERE $__timeFilter(created_at) GROUP BY 1 ORDER BY 1",
+          "rawQuery": true
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "title": "Chunks created over time",
+      "type": "timeseries",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 4
+      },
+      "datasource": {
+        "type": "postgres",
+        "uid": "projectrag-postgres"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "postgres",
+            "uid": "projectrag-postgres"
+          },
+          "format": "time_series",
+          "rawSql": "SELECT $__timeGroupAlias(created_at, '5m'), count(*) AS chunks FROM chunks WHERE $__timeFilter(created_at) GROUP BY 1 ORDER BY 1",
+          "rawQuery": true
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "title": "Recent documents from PostgreSQL",
+      "type": "table",
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 0,
+        "y": 12
+      },
+      "datasource": {
+        "type": "postgres",
+        "uid": "projectrag-postgres"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "postgres",
+            "uid": "projectrag-postgres"
+          },
+          "format": "table",
+          "rawSql": "SELECT created_at AS time, id::text, source, COALESCE(metadata->>'tenant_id','local') AS tenant_id, left(file_hash, 16) AS file_hash_prefix FROM documents ORDER BY created_at DESC LIMIT 25",
+          "rawQuery": true
+        }
+      ],
+      "options": {
+        "showHeader": true
+      }
+    },
+    {
+      "id": 10,
+      "title": "Chunks by document",
+      "type": "table",
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 12,
+        "y": 12
+      },
+      "datasource": {
+        "type": "postgres",
+        "uid": "projectrag-postgres"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "postgres",
+            "uid": "projectrag-postgres"
+          },
+          "format": "table",
+          "rawSql": "SELECT d.source, count(c.id) AS chunks, min(c.created_at) AS first_chunk_at, max(c.created_at) AS last_chunk_at FROM documents d LEFT JOIN chunks c ON c.document_id = d.id GROUP BY d.id, d.source ORDER BY chunks DESC, d.source LIMIT 25",
+          "rawQuery": true
+        }
+      ],
+      "options": {
+        "showHeader": true
+      }
+    },
+    {
+      "id": 11,
+      "title": "Graph facts extracted from ingested data",
+      "type": "table",
+      "gridPos": {
+        "h": 9,
+        "w": 24,
+        "x": 0,
+        "y": 21
+      },
+      "datasource": {
+        "type": "postgres",
+        "uid": "projectrag-postgres"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "postgres",
+            "uid": "projectrag-postgres"
+          },
+          "format": "table",
+          "rawSql": "SELECT gf.created_at AS time, gf.subject, gf.predicate, gf.object, round(gf.confidence::numeric, 2) AS confidence, d.source AS source_document FROM graph_facts gf LEFT JOIN documents d ON d.id = gf.source_document_id ORDER BY gf.created_at DESC LIMIT 50",
+          "rawQuery": true
+        }
+      ],
+      "options": {
+        "showHeader": true
+      }
+    },
+    {
+      "id": 12,
+      "title": "Recent Ask AI / workflow runs",
+      "type": "table",
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 0,
+        "y": 30
+      },
+      "datasource": {
+        "type": "postgres",
+        "uid": "projectrag-postgres"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "postgres",
+            "uid": "projectrag-postgres"
+          },
+          "format": "table",
+          "rawSql": "SELECT created_at AS time, workflow_name, status, COALESCE(input->>'question', input->>'query', left(input::text, 120)) AS question, error FROM workflow_runs ORDER BY created_at DESC LIMIT 30",
+          "rawQuery": true
+        }
+      ],
+      "options": {
+        "showHeader": true
+      }
+    },
+    {
+      "id": 13,
+      "title": "Security audit events",
+      "type": "table",
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 12,
+        "y": 30
+      },
+      "datasource": {
+        "type": "postgres",
+        "uid": "projectrag-postgres"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "postgres",
+            "uid": "projectrag-postgres"
+          },
+          "format": "table",
+          "rawSql": "SELECT timestamp AS time, \"user\", role, action, resource, decision, risk_level FROM security_audit_events ORDER BY timestamp DESC LIMIT 40",
+          "rawQuery": true
+        }
+      ],
+      "options": {
+        "showHeader": true
+      }
+    },
+    {
+      "id": 14,
+      "title": "Validation results and answer quality",
+      "type": "table",
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 0,
+        "y": 39
+      },
+      "datasource": {
+        "type": "postgres",
+        "uid": "projectrag-postgres"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "postgres",
+            "uid": "projectrag-postgres"
+          },
+          "format": "table",
+          "rawSql": "SELECT created_at AS time, validator_name, passed, left(details::text, 220) AS details FROM validation_results ORDER BY created_at DESC LIMIT 40",
+          "rawQuery": true
+        }
+      ],
+      "options": {
+        "showHeader": true
+      }
+    },
+    {
+      "id": 15,
+      "title": "Background jobs and retries",
+      "type": "table",
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 12,
+        "y": 39
+      },
+      "datasource": {
+        "type": "postgres",
+        "uid": "projectrag-postgres"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "postgres",
+            "uid": "projectrag-postgres"
+          },
+          "format": "table",
+          "rawSql": "SELECT created_at AS time, job_type, status, resource_type, resource_id, attempts, max_attempts, next_retry_at, error FROM background_jobs ORDER BY created_at DESC LIMIT 40",
+          "rawQuery": true
+        }
+      ],
+      "options": {
+        "showHeader": true
+      }
+    }
+  ],
+  "templating": {
+    "list": []
+  },
+  "annotations": {
+    "list": []
+  }
+}
